@@ -49,11 +49,21 @@ function LoginForm() {
         throw new Error(data.error || "Authentication denied. Invalid clearance key.");
       }
 
-      router.push(from);
-      router.refresh();
+      let target = "/";
+      try {
+        const decoded = decodeURIComponent(from);
+        if (decoded && !decoded.startsWith("/login")) {
+          target = decoded;
+        }
+      } catch {
+        target = "/";
+      }
+
+      // Hard redirect ensures full browser cookie transmission on iOS Safari & mobile browsers
+      window.location.href = target;
+      return;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication error.");
-    } finally {
       setLoading(false);
     }
   };

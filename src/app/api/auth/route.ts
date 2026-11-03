@@ -104,12 +104,19 @@ export async function POST(request: NextRequest) {
         message: "Cryptographic session authorized.",
       });
 
+      // Detect if request is served over HTTPS (or forwarded HTTPS via proxy)
+      const isHttps =
+        request.nextUrl.protocol === "https:" ||
+        request.headers.get("x-forwarded-proto") === "https" ||
+        process.env.COOKIE_SECURE === "true";
+
       // Set hardened HTTP-Only session cookie
+      // Over HTTPS, Secure is enforced. Over local Wi-Fi HTTP, Secure is relaxed so mobile Safari accepts the cookie.
       response.cookies.set({
         name: AUTH_COOKIE_NAME,
         value: sessionToken,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isHttps,
         sameSite: "lax",
         path: "/",
         maxAge: 30 * 24 * 60 * 60, // 30 days
