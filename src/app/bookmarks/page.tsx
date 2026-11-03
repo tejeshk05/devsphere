@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { useBookmarks } from "@/context/BookmarkContext";
 import { RepoCard } from "@/components/dashboard/RepoCard";
@@ -11,17 +11,26 @@ import {
   Search,
   Trash2,
   Download,
+  Upload,
   ArrowLeft,
   Sparkles,
   Layers,
   Database,
   Radio,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 
 export default function BookmarksPage() {
-  const { bookmarks, clearBookmarks } = useBookmarks();
+  const { bookmarks, clearBookmarks, importBookmarks } = useBookmarks();
   const [searchFilter, setSearchFilter] = useState("");
   const [selectedRepoForAI, setSelectedRepoForAI] = useState<GitHubRepo | null>(null);
+  const [importStatus, setImportStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = bookmarks.filter((repo) => {
     if (!searchFilter.trim()) return true;
@@ -49,6 +58,38 @@ export default function BookmarksPage() {
     downloadAnchor.remove();
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+        const result = importBookmarks(parsed);
+
+        if (result.error) {
+          setImportStatus({ type: "error", message: result.error });
+        } else {
+          setImportStatus({
+            type: "success",
+            message: `Successfully restored ${result.imported} repositories (${result.skipped} duplicate or invalid entries skipped).`,
+          });
+        }
+      } catch {
+        setImportStatus({
+          type: "error",
+          message: "Failed to parse JSON file. Ensure the backup file is valid JSON.",
+        });
+      }
+      setTimeout(() => setImportStatus(null), 5000);
+    };
+    reader.readAsText(file);
+    // Reset file input value
+    e.target.value = "";
+  };
+
   return (
     <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Top Header */}
@@ -73,6 +114,24 @@ export default function BookmarksPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Hidden File Input for JSON Restore */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".json"
+              className="hidden"
+            />
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 text-xs font-mono text-cyan-300 hover:text-white transition-all shadow-sm"
+              title="Restore Bookmarks from JSON File"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Import Backup</span>
+            </button>
+
             {bookmarks.length > 0 && (
               <>
                 <button
@@ -85,7 +144,11 @@ export default function BookmarksPage() {
                 </button>
                 <button
                   onClick={() => {
-                    if (confirm("Are you sure you want to clear all repositories in your vault?")) {
+                    if (
+                      confirm(
+                        "Are you sure you want to clear all repositories in your vault?"
+                      )
+                    ) {
                       clearBookmarks();
                     }
                   }}
@@ -103,6 +166,24 @@ export default function BookmarksPage() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+        {/* Import Notification Banner */}
+        {importStatus && (
+          <div
+            className={`p-3.5 rounded-2xl border text-xs font-mono flex items-center gap-2.5 animate-in fade-in ${
+              importStatus.type === "success"
+                ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
+                : "bg-rose-950/60 border-rose-800 text-rose-300"
+            }`}
+          >
+            {importStatus.type === "success" ? (
+              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{importStatus.message}</span>
+          </div>
+        )}
+
         {/* Search within bookmarks */}
         {bookmarks.length > 0 && (
           <div className="max-w-md relative">
@@ -127,16 +208,25 @@ export default function BookmarksPage() {
               Vault Is Currently Empty
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-mono">
-              Bookmark trending repositories from the Discovery Grid to persist them here for
-              offline study, architectural audits, and benchmarking.
+              Bookmark repositories from the Discovery Grid to persist them here for
+              offline reference, or restore from a previously exported JSON backup.
             </p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-950"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Explore Live AI Repos</span>
-            </Link>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-mono text-slate-300 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import JSON Backup</span>
+              </button>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-950"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Explore Live Repos</span>
+              </Link>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center space-y-2 font-mono">

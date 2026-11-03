@@ -17,19 +17,23 @@ import {
   Cpu,
   ShieldAlert,
   Zap,
+  BookOpen,
 } from "lucide-react";
 
 interface AIExplainModalProps {
   repo: GitHubRepo | null;
+  readme?: string | null;
   onClose: () => void;
 }
 
-export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
+export function AIExplainModal({ repo, readme, onClose }: AIExplainModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<AIExplanationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"summary" | "architecture" | "usecases">("summary");
+  const [activeTab, setActiveTab] = useState<
+    "summary" | "architecture" | "usecases" | "learning"
+  >("summary");
 
   useEffect(() => {
     if (!repo) {
@@ -53,6 +57,7 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
             language: repo!.language,
             topics: repo!.topics,
             stars: repo!.stargazers_count,
+            readme: readme || null,
           }),
         });
 
@@ -77,17 +82,19 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
     return () => {
       isCancelled = true;
     };
-  }, [repo]);
+  }, [repo, readme]);
 
   if (!repo) return null;
 
   const handleCopy = () => {
     if (!data) return;
-    const text = `=== DevSphere AI Architecture Report ===\nRepository: ${repo.full_name}\n\nSummary:\n${data.summary}\n\nTrending Trigger:\n${data.whyTrending}\n\nKey Strengths:\n${data.architectureHighlights.join("\n- ")}\n`;
+    const text = `=== DevSphere AI Architecture Report ===\nRepository: ${repo.full_name}\n\nSummary:\n${data.summary}\n\nTrending Catalyst:\n${data.whyTrending}\n\nArchitectural Highlights:\n${data.architectureHighlights.map((h) => `- ${h}`).join("\n")}\n\nUse Cases:\n${data.useCases.map((u) => `- ${u}`).join("\n")}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const isGemini = data?.generatedWith === "gemini";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xl animate-in fade-in duration-200">
@@ -105,12 +112,19 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
                 <h3 className="text-base font-extrabold text-white tracking-tight">
                   {repo.name}
                 </h3>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-700/60 text-purple-300">
-                  AI DECONSTRUCTION
+                <span
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                    isGemini
+                      ? "bg-purple-950/80 border-purple-600 text-purple-300"
+                      : "bg-cyan-950/80 border-cyan-700/60 text-cyan-300"
+                  }`}
+                >
+                  {isGemini ? "GEMINI 2.5 ACTIVE" : "HEURISTIC ANALYSIS"}
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono">
-                @{repo.owner.login} • {repo.language || "Polyglot"} • {repo.stargazers_count.toLocaleString()} stars
+                @{repo.owner.login} • {repo.language || "Polyglot"} •{" "}
+                {repo.stargazers_count.toLocaleString()} stargazers
               </p>
             </div>
           </div>
@@ -122,7 +136,11 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
                 className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-400 hover:text-white transition-colors"
                 title="Copy Analysis Report"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copied ? (
+                  <Check className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
               </button>
             )}
             <button
@@ -135,10 +153,10 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 px-5 pt-3 border-b border-white/[0.06] bg-[#050813]">
+        <div className="flex items-center gap-2 px-5 pt-3 border-b border-white/[0.06] bg-[#050813] overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab("summary")}
-            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 whitespace-nowrap transition-all ${
               activeTab === "summary"
                 ? "border-cyan-400 text-cyan-300 font-bold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
@@ -148,7 +166,7 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
           </button>
           <button
             onClick={() => setActiveTab("architecture")}
-            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 whitespace-nowrap transition-all ${
               activeTab === "architecture"
                 ? "border-purple-400 text-purple-300 font-bold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
@@ -158,13 +176,23 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
           </button>
           <button
             onClick={() => setActiveTab("usecases")}
-            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 whitespace-nowrap transition-all ${
               activeTab === "usecases"
                 ? "border-emerald-400 text-emerald-300 font-bold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
-            Production Use Cases
+            Use Cases
+          </button>
+          <button
+            onClick={() => setActiveTab("learning")}
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 whitespace-nowrap transition-all ${
+              activeTab === "learning"
+                ? "border-amber-400 text-amber-300 font-bold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Code Roadmap
           </button>
         </div>
 
@@ -181,7 +209,9 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
                   Running Neural Architecture Evaluation...
                 </p>
                 <p className="text-xs text-slate-400 font-mono">
-                  Synthesizing code design patterns, AST signals & repository velocity
+                  {readme
+                    ? "Evaluating repository README specifications and engineering patterns"
+                    : "Synthesizing code design signals and repository velocity"}
                 </p>
               </div>
             </div>
@@ -258,6 +288,26 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
                   </div>
                 </div>
               )}
+
+              {activeTab === "learning" && (
+                <div className="space-y-3 animate-in fade-in">
+                  <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                    Codebase Exploration Recommendations
+                  </h4>
+                  <div className="space-y-2.5">
+                    {(data.learningRecommendations || []).map((rec, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 text-xs sm:text-sm text-amber-200"
+                      >
+                        <Terminal className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -265,9 +315,14 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
         {/* Footer */}
         <div className="p-4 border-t border-white/[0.08] bg-[#040711] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isGemini ? "bg-purple-400" : "bg-cyan-400"
+              } animate-pulse`}
+            />
             <span className="text-[11px] font-mono text-slate-400">
-              Engine: {data?.generatedWith === "gemini" ? "Google Gemini 2.5 Flash" : "Heuristic Code Matrix"}
+              Intelligence:{" "}
+              {isGemini ? "Google Gemini 2.5 Flash" : "Rule-Based Heuristic Fallback"}
             </span>
           </div>
 

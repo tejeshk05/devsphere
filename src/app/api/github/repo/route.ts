@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GitHubRepo } from "@/types/github";
+import { verifyRequestAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // Direct API authentication guard
+  if (!(await verifyRequestAuth(request))) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized. Session authentication required." },
+      { status: 401 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const owner = searchParams.get("owner");
@@ -11,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     if (!owner || !name) {
       return NextResponse.json(
-        { success: false, error: "Owner and name are required." },
+        { success: false, error: "Owner and repository name are required." },
         { status: 400 }
       );
     }
@@ -26,7 +35,7 @@ export async function GET(request: NextRequest) {
       headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
 
-    // 1. Fetch Repo metadata
+    // 1. Fetch Repository Metadata
     const repoRes = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
       headers,
       next: { revalidate: 300 },
@@ -67,8 +76,7 @@ export async function GET(request: NextRequest) {
       readme: readmeContent,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to load repo";
+    const message = error instanceof Error ? error.message : "Failed to load repository.";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

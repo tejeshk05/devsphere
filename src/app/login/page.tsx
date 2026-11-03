@@ -160,19 +160,15 @@ function LoginForm() {
 
       {/* Telemetry Footer */}
       <div className="pt-2 border-t border-white/[0.06] text-center space-y-2">
-        <p className="text-[11px] font-mono text-slate-400">
-          Default local developer key:{" "}
-          <code className="text-cyan-300 font-mono bg-[#03060f] px-2 py-0.5 rounded border border-white/[0.08] select-all">
-            devsphere-master-key-2026
-          </code>
-        </p>
-
-        <div className="flex items-center justify-center gap-4 text-[10px] font-mono text-slate-500 pt-1">
-          <span>TLS 1.3 Strict</span>
+        <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-slate-400 pt-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            TLS 1.3 Strict
+          </span>
+          <span>•</span>
+          <span>HMAC Session Guard</span>
           <span>•</span>
           <span>Zero Client Leakage</span>
-          <span>•</span>
-          <span>Edge Auth Guard</span>
         </div>
       </div>
     </div>

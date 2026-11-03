@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAccessKey, getSessionSignature, AUTH_COOKIE_NAME } from "@/lib/auth";
+import {
+  verifyAccessKey,
+  createSessionToken,
+  validateSessionToken,
+  AUTH_COOKIE_NAME,
+} from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,15 +13,18 @@ export async function POST(request: NextRequest) {
     const { action, accessKey } = await request.json();
 
     if (action === "logout") {
-      const response = NextResponse.json({ success: true, message: "Logged out" });
+      const response = NextResponse.json({
+        success: true,
+        message: "Session terminated successfully.",
+      });
       response.cookies.delete(AUTH_COOKIE_NAME);
       return response;
     }
 
     if (action === "login") {
-      if (!accessKey) {
+      if (!accessKey || typeof accessKey !== "string") {
         return NextResponse.json(
-          { success: false, error: "Access key is required." },
+          { success: false, error: "Access secret key is required." },
           { status: 400 }
         );
       }
@@ -29,15 +37,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const sessionToken = await createSessionToken();
+
       const response = NextResponse.json({
         success: true,
-        message: "Authentication successful",
+        message: "Cryptographic session authorized.",
       });
 
-      // Set HTTP-only secure cookie (expires in 30 days)
+      // Set hardened HTTP-Only session cookie
       response.cookies.set({
         name: AUTH_COOKIE_NAME,
-        value: getSessionSignature(),
+        value: sessionToken,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -48,20 +58,22 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Unsupported action." },
+      { status: 400 }
+    );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Auth failure";
+    const message = error instanceof Error ? error.message : "Authentication error.";
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME);
-  const isValid = token?.value === getSessionSignature();
+  const isValid = await validateSessionToken(token?.value);
 
   return NextResponse.json({
     authenticated: isValid,
     ownerAccount: process.env.AUTHORIZED_ACCOUNT_NAME || "Authorized Developer",
   });
 }
-
