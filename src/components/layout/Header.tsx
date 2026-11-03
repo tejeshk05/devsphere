@@ -44,7 +44,7 @@ export function Header({ onSearchChange, searchQuery = "" }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+    <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(2.75rem,calc(env(safe-area-inset-top)+0.75rem))] md:pt-3.5 pb-3">
       <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
         {/* Mobile Brand (When Sidebar is hidden) */}
         <div className="flex items-center gap-2.5 md:hidden">

@@ -62,7 +62,7 @@ export default function AuthStatusPage() {
   return (
     <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(2.75rem,calc(env(safe-area-inset-top)+0.75rem))] md:pt-3.5 pb-3">
         <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <Link
