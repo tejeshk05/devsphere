@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CategoryId, GitHubRepo, TimeFilter, TrendingMode } from "@/types/github";
 import { CATEGORIES, TIME_FILTERS, TRENDING_MODES } from "@/lib/constants";
 import { Header } from "@/components/layout/Header";
@@ -27,8 +28,16 @@ import {
   Database,
 } from "lucide-react";
 
-export default function DashboardPage() {
-  const [category, setCategory] = useState<CategoryId>("ai");
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlCategoryParam = searchParams.get("category") as CategoryId | null;
+
+  const [category, setCategory] = useState<CategoryId>(
+    urlCategoryParam && CATEGORIES.some((c) => c.id === urlCategoryParam)
+      ? urlCategoryParam
+      : "ai"
+  );
   const [timeframe, setTimeframe] = useState<TimeFilter>("24h");
   const [mode, setMode] = useState<TrendingMode>("fastest-growing");
   const [page, setPage] = useState(1);
@@ -45,6 +54,19 @@ export default function DashboardPage() {
   const [selectedRepoForAI, setSelectedRepoForAI] = useState<GitHubRepo | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
   const [ingestNotice, setIngestNotice] = useState<string | null>(null);
+
+  // Sync category if URL search param changes (e.g. clicking sidebar AI Focus Channels)
+  useEffect(() => {
+    const param = searchParams.get("category") as CategoryId | null;
+    if (param && CATEGORIES.some((c) => c.id === param) && param !== category) {
+      setCategory(param);
+    }
+  }, [searchParams, category]);
+
+  const handleSelectCategory = (cat: CategoryId) => {
+    setCategory(cat);
+    router.replace(`/?category=${cat}`, { scroll: false });
+  };
 
   // 400ms search debounce
   useEffect(() => {
@@ -234,7 +256,7 @@ export default function DashboardPage() {
           {/* Swipeable Category Pills */}
           <CategoryPills
             selectedCategory={category}
-            onSelectCategory={(cat) => setCategory(cat)}
+            onSelectCategory={handleSelectCategory}
           />
 
           {/* Hairline Divider */}
@@ -390,5 +412,20 @@ export default function DashboardPage() {
         onClose={() => setSelectedRepoForAI(null)}
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#040711] flex flex-col items-center justify-center text-slate-500 font-mono text-xs gap-3">
+          <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <span>CONNECTING TO DEVSPHERE RADAR...</span>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }
