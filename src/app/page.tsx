@@ -158,7 +158,7 @@ function DashboardContent() {
       <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 pb-28 md:pb-8 space-y-6">
         {/* Ingestion Notification Banner */}
         {ingestNotice && (
           <div className="p-3 rounded-2xl bg-cyan-950/70 border border-cyan-800 text-cyan-200 text-xs font-mono flex items-center justify-between animate-in fade-in">

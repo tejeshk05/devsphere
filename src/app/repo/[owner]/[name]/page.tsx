@@ -83,7 +83,7 @@ export default function RepoDetailPage() {
   return (
     <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#040711]/85 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 py-3">
+      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <button
@@ -141,7 +141,7 @@ export default function RepoDetailPage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 pb-28 md:pb-8 space-y-6">
         {loading ? (
           <div className="py-24 flex flex-col items-center justify-center space-y-3 font-mono">
             <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
@@ -290,7 +290,12 @@ export default function RepoDetailPage() {
                 <div
                   className="prose prose-invert max-w-none text-slate-300 text-xs sm:text-sm leading-relaxed overflow-x-auto space-y-4 font-sans [&_a]:text-cyan-400 [&_a:hover]:underline [&_pre]:bg-[#03060f] [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-white/[0.08] [&_code]:font-mono [&_code]:text-cyan-300 [&_h1]:text-white [&_h1]:text-xl [&_h2]:text-white [&_h2]:text-lg [&_h3]:text-slate-100 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                   dangerouslySetInnerHTML={{
-                    __html: renderSanitizedMarkdown(readme),
+                    __html: renderSanitizedMarkdown(
+                      readme,
+                      owner,
+                      name,
+                      repo.default_branch
+                    ),
                   }}
                 />
               ) : (

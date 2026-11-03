@@ -10,6 +10,11 @@ export function MobileNav() {
   const pathname = usePathname();
   const { bookmarks } = useBookmarks();
 
+  // Hide mobile bottom navigation bar on login screen
+  if (pathname === "/login") {
+    return null;
+  }
+
   const items = [
     {
       label: "Grid",
@@ -35,7 +40,7 @@ export function MobileNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-3 left-4 right-4 z-50">
+    <nav className="md:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-4 right-4 z-50">
       <div className="bg-[#050914]/90 backdrop-blur-2xl border border-white/[0.12] rounded-2xl px-3 py-2 shadow-2xl shadow-black/80 flex items-center justify-around">
         {items.map((item) => {
           const Icon = item.icon;

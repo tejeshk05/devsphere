@@ -53,8 +53,7 @@ export default function AuthStatusPage() {
         });
       }
 
-      router.push("/login");
-      router.refresh();
+      window.location.href = "/login";
     } finally {
       setLoading(false);
     }
@@ -63,7 +62,7 @@ export default function AuthStatusPage() {
   return (
     <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#040711]/85 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 py-3">
+      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <Link
@@ -81,7 +80,7 @@ export default function AuthStatusPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 lg:px-8 py-8 pb-28 md:pb-8 space-y-6">
         <div className="p-6 sm:p-8 rounded-3xl mnc-card space-y-6 shadow-2xl">
           <div className="flex items-center justify-between flex-wrap gap-4 pb-6 border-b border-white/[0.08]">
             <div className="flex items-center gap-3.5">
