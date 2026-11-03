@@ -13,6 +13,11 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Terminal,
+  Cpu,
+  Radio,
+  Fingerprint,
+  Zap,
 } from "lucide-react";
 
 function LoginForm() {
@@ -41,10 +46,9 @@ function LoginForm() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Authentication failed. Incorrect access key.");
+        throw new Error(data.error || "Authentication denied. Invalid clearance key.");
       }
 
-      // Successfully authenticated
       router.push(from);
       router.refresh();
     } catch (err: unknown) {
@@ -55,67 +59,80 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative w-full max-w-md bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
-      {/* Brand Icon & Heading */}
+    <div className="relative w-full max-w-md mnc-card rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-3xl border border-white/[0.12] space-y-6 overflow-hidden">
+      {/* Top Hairline Ambient Beam */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#00f0ff]" />
+
+      {/* Brand & Security Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-emerald-400 p-[1.5px] shadow-lg shadow-cyan-500/20">
-          <div className="w-full h-full bg-[#080c14] rounded-2xl flex items-center justify-center">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-emerald-400 p-[1.5px] shadow-xl shadow-cyan-500/25">
+          <div className="w-full h-full bg-[#050813] rounded-2xl flex items-center justify-center">
             <Layers className="w-7 h-7 text-cyan-400" />
           </div>
         </div>
 
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center justify-center gap-2">
-            <span>DevSphere</span>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-300">
-              PRO
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-black text-white tracking-tight">DevSphere</h1>
+            <span className="text-[9px] font-mono font-bold tracking-widest px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-700/60 text-cyan-300">
+              VAULT
             </span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Private AI & Open-Source Repository Discovery Platform
+          </div>
+          <p className="text-xs font-mono text-slate-400 mt-1">
+            Personal AI & Open-Source Discovery Platform
           </p>
         </div>
       </div>
 
-      {/* Security Banner */}
-      <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-300 leading-relaxed">
-          <strong className="text-white block font-medium">Authorized Owner Access</strong>
-          This deployment is private. Enter your personal secret access key configured in{" "}
-          <code className="text-cyan-300 font-mono">.env.local</code>.
+      {/* Security Clearance Alert Strip */}
+      <div className="p-3.5 rounded-2xl bg-[#090f20]/90 border border-cyan-500/20 flex items-start gap-3 shadow-inner">
+        <Fingerprint className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+        <div className="text-xs text-slate-300 leading-relaxed font-mono">
+          <div className="flex items-center justify-between text-[10px] text-cyan-400 font-bold mb-0.5">
+            <span>CLEARANCE: LEVEL-4 OWNER</span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              SHIELD ON
+            </span>
+          </div>
+          Private deployment protected by server session authentication. Enter your master
+          key configured in <code className="text-cyan-300">.env.local</code>.
         </div>
       </div>
 
       {/* Error notification */}
       {error && (
-        <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300 flex items-center gap-2">
+        <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/80 text-xs font-mono text-rose-300 flex items-center gap-2.5">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Form */}
+      {/* Login Form */}
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center justify-between">
-            <span>Personal Access Key</span>
-            <span className="text-[10px] text-slate-400">Owner Secret</span>
+            <span className="flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-cyan-400" />
+              Master Access Key
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">Owner Secret</span>
           </label>
-          <div className="relative">
-            <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+
+          <div className="relative group">
+            <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
             <input
               type={showPassword ? "text" : "password"}
-              placeholder="Enter personal access key..."
+              placeholder="Enter master personal key..."
               value={accessKey}
               onChange={(e) => setAccessKey(e.target.value)}
               autoFocus
-              className="w-full pl-10 pr-10 py-3 bg-slate-950/90 text-sm text-slate-100 placeholder-slate-400 rounded-xl border border-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+              className="w-full pl-10 pr-10 py-3 bg-[#03060f]/90 text-sm text-slate-100 placeholder-slate-500 rounded-xl border border-white/[0.08] focus:border-cyan-500 focus:bg-[#060c1d] focus:ring-2 focus:ring-cyan-500/20 focus:outline-none font-mono transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -125,27 +142,38 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading || !accessKey.trim()}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wide transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-cyan-950"
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-black text-xs font-mono uppercase tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/60"
         >
           {loading ? (
-            <span>Authenticating Session...</span>
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+              <span>Verifying Cryptographic Session...</span>
+            </>
           ) : (
             <>
-              <span>Unlock DevSphere</span>
+              <span>Authorize & Unlock Dashboard</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
         </button>
       </form>
 
-      {/* Quick Hint / Dev helper */}
-      <div className="pt-2 text-center border-t border-slate-800/60">
-        <p className="text-[11px] text-slate-400">
-          Default local key:{" "}
-          <code className="text-slate-300 font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+      {/* Telemetry Footer */}
+      <div className="pt-2 border-t border-white/[0.06] text-center space-y-2">
+        <p className="text-[11px] font-mono text-slate-400">
+          Default local developer key:{" "}
+          <code className="text-cyan-300 font-mono bg-[#03060f] px-2 py-0.5 rounded border border-white/[0.08] select-all">
             devsphere-master-key-2026
           </code>
         </p>
+
+        <div className="flex items-center justify-center gap-4 text-[10px] font-mono text-slate-500 pt-1">
+          <span>TLS 1.3 Strict</span>
+          <span>•</span>
+          <span>Zero Client Leakage</span>
+          <span>•</span>
+          <span>Edge Auth Guard</span>
+        </div>
       </div>
     </div>
   );
@@ -153,16 +181,16 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#03050c] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* High-tech Ambient Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse-slow" />
+      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       <Suspense
         fallback={
-          <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-            <span>Loading authentication vault...</span>
+          <div className="p-8 text-center text-slate-400 flex items-center justify-center gap-2 font-mono text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+            <span>Establishing Secure Handshake...</span>
           </div>
         }
       >
@@ -171,4 +199,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -13,6 +13,10 @@ import {
   Loader2,
   Copy,
   Check,
+  Terminal,
+  Cpu,
+  ShieldAlert,
+  Zap,
 } from "lucide-react";
 
 interface AIExplainModalProps {
@@ -25,6 +29,7 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
   const [data, setData] = useState<AIExplanationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"summary" | "architecture" | "usecases">("summary");
 
   useEffect(() => {
     if (!repo) {
@@ -78,30 +83,34 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
 
   const handleCopy = () => {
     if (!data) return;
-    const text = `DevSphere AI Insight for ${repo.full_name}:\n\nSummary:\n${data.summary}\n\nWhy It's Trending:\n${data.whyTrending}`;
+    const text = `=== DevSphere AI Architecture Report ===\nRepository: ${repo.full_name}\n\nSummary:\n${data.summary}\n\nTrending Trigger:\n${data.whyTrending}\n\nKey Strengths:\n${data.architectureHighlights.join("\n- ")}\n`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-[#090e18] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-950/80 border border-purple-800/60 flex items-center justify-center text-purple-400">
-              <Sparkles className="w-4 h-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xl animate-in fade-in duration-200">
+      <div className="relative w-full max-w-2xl bg-[#060a16] border border-white/[0.12] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Top Header Bar */}
+        <div className="p-4 sm:p-5 border-b border-white/[0.08] flex items-center justify-between bg-[#080d1e]/80">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 p-[1.5px] shadow-lg shadow-purple-950">
+              <div className="w-full h-full bg-[#060a16] rounded-2xl flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+              </div>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span>{repo.name}</span>
-                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-purple-950/60 border border-purple-800/40 text-purple-300">
-                  AI Architecture Insight
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-white tracking-tight">
+                  {repo.name}
+                </h3>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-700/60 text-purple-300">
+                  AI DECONSTRUCTION
                 </span>
-              </h3>
+              </div>
               <p className="text-xs text-slate-400 font-mono">
-                {repo.owner.login} / {repo.language || "Multi-language"}
+                @{repo.owner.login} • {repo.language || "Polyglot"} • {repo.stargazers_count.toLocaleString()} stars
               </p>
             </div>
           </div>
@@ -110,93 +119,140 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
             {data && (
               <button
                 onClick={handleCopy}
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
-                title="Copy Insight"
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-400 hover:text-white transition-colors"
+                title="Copy Analysis Report"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Content Body */}
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 px-5 pt-3 border-b border-white/[0.06] bg-[#050813]">
+          <button
+            onClick={() => setActiveTab("summary")}
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+              activeTab === "summary"
+                ? "border-cyan-400 text-cyan-300 font-bold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Executive Summary
+          </button>
+          <button
+            onClick={() => setActiveTab("architecture")}
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+              activeTab === "architecture"
+                ? "border-purple-400 text-purple-300 font-bold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Architecture Patterns
+          </button>
+          <button
+            onClick={() => setActiveTab("usecases")}
+            className={`pb-2.5 text-xs font-mono font-medium border-b-2 transition-all ${
+              activeTab === "usecases"
+                ? "border-emerald-400 text-emerald-300 font-bold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Production Use Cases
+          </button>
+        </div>
+
+        {/* Modal Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 text-slate-200">
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-              <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-              <p className="text-sm font-medium text-slate-300">
-                Analyzing repository architecture & code signals...
-              </p>
-              <p className="text-xs text-slate-500 font-mono">
-                Extracting technical patterns, dependencies & trending indicators
-              </p>
+            <div className="py-16 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="relative">
+                <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
+                <Sparkles className="w-4 h-4 text-purple-400 absolute inset-0 m-auto" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-white tracking-tight">
+                  Running Neural Architecture Evaluation...
+                </p>
+                <p className="text-xs text-slate-400 font-mono">
+                  Synthesizing code design patterns, AST signals & repository velocity
+                </p>
+              </div>
             </div>
           ) : error ? (
-            <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-sm">
-              {error}
+            <div className="p-5 rounded-2xl bg-rose-950/30 border border-rose-800/80 text-rose-300 text-sm font-mono space-y-2">
+              <div className="font-bold flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4" />
+                Analysis Pipeline Exception
+              </div>
+              <p className="text-xs">{error}</p>
             </div>
           ) : data ? (
             <>
-              {/* Executive Summary */}
-              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                <div className="text-xs font-mono uppercase text-slate-400 mb-1.5 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                  Plain-English Overview
-                </div>
-                <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal">
-                  {data.summary}
-                </p>
-              </div>
+              {activeTab === "summary" && (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="p-4 rounded-2xl bg-[#0a1024] border border-white/[0.08] space-y-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                      Core Engineering Thesis
+                    </span>
+                    <p className="text-sm sm:text-base text-slate-100 leading-relaxed font-normal">
+                      {data.summary}
+                    </p>
+                  </div>
 
-              {/* Why It's Trending */}
-              <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-800/40">
-                <div className="text-xs font-mono uppercase text-amber-400 mb-1.5 flex items-center gap-1.5 font-semibold">
-                  <Flame className="w-3.5 h-3.5" />
-                  Why It Is Trending
+                  <div className="p-4 rounded-2xl bg-amber-950/20 border border-amber-800/40 space-y-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5" />
+                      Trending Adoption Catalyst
+                    </span>
+                    <p className="text-sm text-amber-200/90 leading-relaxed font-normal">
+                      {data.whyTrending}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-amber-200/90 leading-relaxed">
-                  {data.whyTrending}
-                </p>
-              </div>
+              )}
 
-              {/* Architecture Highlights */}
-              <div>
-                <h4 className="text-xs font-mono uppercase text-slate-400 mb-2.5 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-purple-400" />
-                  Key Architectural Strengths
-                </h4>
-                <div className="space-y-2">
-                  {data.architectureHighlights.map((point, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/50 border border-slate-800 text-xs sm:text-sm text-slate-300"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span>{point}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Target Developer Use Cases */}
-              {data.useCases && data.useCases.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-mono uppercase text-slate-400 mb-2.5">
-                    Target Developer Use Cases
+              {activeTab === "architecture" && (
+                <div className="space-y-3 animate-in fade-in">
+                  <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-400" />
+                    Key Architectural Pillars
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-2.5">
+                    {data.architectureHighlights.map((point, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs sm:text-sm text-slate-200"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{point}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "usecases" && (
+                <div className="space-y-3 animate-in fade-in">
+                  <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                    Target Production Scenarios
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2.5">
                     {data.useCases.map((useCase, idx) => (
                       <div
                         key={idx}
-                        className="p-2.5 rounded-lg bg-slate-900/30 border border-slate-800/80 text-xs text-slate-300"
+                        className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs sm:text-sm text-slate-200 flex items-center gap-2.5"
                       >
-                        • {useCase}
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>{useCase}</span>
                       </div>
                     ))}
                   </div>
@@ -207,11 +263,11 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-[#070b13] flex items-center justify-between">
+        <div className="p-4 border-t border-white/[0.08] bg-[#040711] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
             <span className="text-[11px] font-mono text-slate-400">
-              DevSphere AI Engine: {data?.generatedWith || "ready"}
+              Engine: {data?.generatedWith === "gemini" ? "Google Gemini 2.5 Flash" : "Heuristic Code Matrix"}
             </span>
           </div>
 
@@ -219,9 +275,9 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
             href={repo.html_url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium"
+            className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-mono font-medium transition-colors"
           >
-            <span>Open Repository</span>
+            <span>Inspect GitHub Source</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
@@ -229,4 +285,3 @@ export function AIExplainModal({ repo, onClose }: AIExplainModalProps) {
     </div>
   );
 }
-

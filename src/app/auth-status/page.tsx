@@ -12,6 +12,9 @@ import {
   Cpu,
   Layers,
   CheckCircle,
+  Fingerprint,
+  Radio,
+  Zap,
 } from "lucide-react";
 
 export default function AuthStatusPage() {
@@ -45,20 +48,20 @@ export default function AuthStatusPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080c14] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#080c14]/80 backdrop-blur-md border-b border-slate-800/60 px-4 lg:px-8 py-3">
+      <header className="sticky top-0 z-30 w-full bg-[#040711]/85 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 py-3">
         <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-slate-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              <span>Security & Owner Authentication</span>
+            <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Owner Security & Authorization Vault</span>
             </h1>
           </div>
         </div>
@@ -66,16 +69,21 @@ export default function AuthStatusPage() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 lg:px-8 py-8 space-y-6">
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-6">
-          <div className="flex items-center justify-between flex-wrap gap-4 pb-6 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-950/60 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
-                <ShieldCheck className="w-6 h-6" />
+        <div className="p-6 sm:p-8 rounded-3xl mnc-card space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between flex-wrap gap-4 pb-6 border-b border-white/[0.08]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-950/60 border border-emerald-700/60 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/40">
+                <ShieldCheck className="w-7 h-7" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Private Instance Active</h2>
-                <p className="text-xs text-slate-400 font-mono">
-                  Owner Account: {authData?.ownerAccount || "Authorized Account"}
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-black text-white">Owner Session Active</h2>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700 text-emerald-300">
+                    PROTECTED
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Authorized Identity: {authData?.ownerAccount || "D. Tejesh Kumar (Owner)"}
                 </p>
               </div>
             </div>
@@ -83,58 +91,57 @@ export default function AuthStatusPage() {
             <button
               onClick={handleLogout}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs font-semibold text-rose-300 hover:bg-rose-900/40 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-950/40 border border-rose-800/80 text-xs font-mono font-bold text-rose-300 hover:bg-rose-900/50 transition-colors shadow-sm"
             >
               <LogOut className="w-4 h-4" />
-              <span>End Secure Session</span>
+              <span>Terminate Session</span>
             </button>
           </div>
 
           {/* Security Features Overview */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-mono uppercase text-slate-400 tracking-wider">
-              Protected Architecture Safeguards
+          <div className="space-y-3 font-mono">
+            <h3 className="text-xs uppercase text-slate-400 tracking-wider font-bold">
+              Production Cryptographic Guardrails
             </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div className="p-4 rounded-2xl bg-[#03060f]/80 border border-white/[0.08] flex items-start gap-3">
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-300">
-                  <strong className="block text-white font-medium mb-0.5">
-                    Server-Side Secrets
+                <div className="text-xs text-slate-300 space-y-1">
+                  <strong className="block text-white font-bold">
+                    Zero Client Token Leakage
                   </strong>
-                  All GitHub and AI API tokens remain strictly encrypted on the server.
-                  Zero secrets exposed in browser bundles.
+                  All GitHub PATs and Gemini AI keys remain encrypted on the server environment.
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div className="p-4 rounded-2xl bg-[#03060f]/80 border border-white/[0.08] flex items-start gap-3">
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-300">
-                  <strong className="block text-white font-medium mb-0.5">
-                    Edge Middleware Guard
+                <div className="text-xs text-slate-300 space-y-1">
+                  <strong className="block text-white font-bold">
+                    Edge Middleware Sentry
                   </strong>
-                  Unauthorized web visitors and bots are halted before route rendering.
+                  Non-authenticated bots and public visitors are halted before page rendering.
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div className="p-4 rounded-2xl bg-[#03060f]/80 border border-white/[0.08] flex items-start gap-3">
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-300">
-                  <strong className="block text-white font-medium mb-0.5">
+                <div className="text-xs text-slate-300 space-y-1">
+                  <strong className="block text-white font-bold">
                     HTTP-Only Session Cookie
                   </strong>
-                  Session tokens cannot be accessed or intercepted via client JavaScript (XSS
-                  resilient).
+                  Tamper-proof browser session cookie with lax SameSite policy and path scoping.
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div className="p-4 rounded-2xl bg-[#03060f]/80 border border-white/[0.08] flex items-start gap-3">
                 <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-slate-300">
-                  <strong className="block text-white font-medium mb-0.5">
-                    PWA Offline Storage
+                <div className="text-xs text-slate-300 space-y-1">
+                  <strong className="block text-white font-bold">
+                    Local Device Isolation
                   </strong>
-                  Bookmarks and UI cache are stored locally in the browser sandbox.
+                  Bookmarks and UI cache are persisted in browser sandboxed LocalStorage.
                 </div>
               </div>
             </div>
@@ -144,4 +151,3 @@ export default function AuthStatusPage() {
     </div>
   );
 }
-

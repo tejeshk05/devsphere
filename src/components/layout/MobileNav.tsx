@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Bookmark, Sparkles, Shield } from "lucide-react";
+import { Compass, Bookmark, Sparkles, ShieldCheck } from "lucide-react";
 import { useBookmarks } from "@/context/BookmarkContext";
 
 export function MobileNav() {
@@ -12,12 +12,12 @@ export function MobileNav() {
 
   const items = [
     {
-      label: "Trending",
+      label: "Grid",
       href: "/",
       icon: Compass,
     },
     {
-      label: "Bookmarks",
+      label: "Vault",
       href: "/bookmarks",
       icon: Bookmark,
       count: bookmarks.length,
@@ -28,15 +28,15 @@ export function MobileNav() {
       icon: Sparkles,
     },
     {
-      label: "Auth",
+      label: "Security",
       href: "/auth-status",
-      icon: Shield,
+      icon: ShieldCheck,
     },
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#070b14]/90 backdrop-blur-xl border-t border-slate-800/80 px-4 py-2 pb-safe">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+    <nav className="md:hidden fixed bottom-3 left-4 right-4 z-50">
+      <div className="bg-[#050914]/90 backdrop-blur-2xl border border-white/[0.12] rounded-2xl px-3 py-2 shadow-2xl shadow-black/80 flex items-center justify-around">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -45,23 +45,29 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-xl transition-all relative ${
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative ${
                 isActive
-                  ? "text-cyan-400 font-medium"
+                  ? "text-cyan-400 font-semibold"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
               <div className="relative">
-                <Icon className={`w-5 h-5 ${isActive ? "text-cyan-400 scale-110" : ""}`} />
+                <Icon
+                  className={`w-5 h-5 transition-transform duration-200 ${
+                    isActive ? "scale-110 text-cyan-400" : ""
+                  }`}
+                />
                 {item.count !== undefined && item.count > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 text-[9px] font-mono px-1 rounded-full bg-cyan-500 text-slate-950 font-bold flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 text-[9px] font-mono px-1 rounded-full bg-cyan-400 text-slate-950 font-extrabold flex items-center justify-center shadow-md">
                     {item.count}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] mt-1 tracking-tight">{item.label}</span>
+              <span className="text-[10px] tracking-tight mt-1 font-mono uppercase">
+                {item.label}
+              </span>
               {isActive && (
-                <span className="w-1 h-1 rounded-full bg-cyan-400 mt-0.5"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-0.5 shadow-[0_0_6px_#00f0ff]" />
               )}
             </Link>
           );
@@ -70,4 +76,3 @@ export function MobileNav() {
     </nav>
   );
 }
-
