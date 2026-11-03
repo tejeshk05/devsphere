@@ -107,7 +107,7 @@ export function RepoCard({ repo, rankIndex, onExplainClick }: RepoCardProps) {
             <a
               href={repo.html_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="p-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-slate-400 hover:text-cyan-400 hover:bg-white/[0.06] transition-colors"
               title="View on GitHub"
             >
@@ -134,7 +134,7 @@ export function RepoCard({ repo, rankIndex, onExplainClick }: RepoCardProps) {
 
         {/* Topics Pills */}
         {repo.topics && repo.topics.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3.5">
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
             {repo.topics.slice(0, 3).map((topic) => (
               <span
                 key={topic}
@@ -148,6 +148,42 @@ export function RepoCard({ repo, rankIndex, onExplainClick }: RepoCardProps) {
                 +{repo.topics.length - 3}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Historical Velocity & Growth Telemetry */}
+        {repo.velocity && (
+          <div className="p-2.5 rounded-xl bg-[#030611]/90 border border-white/[0.07] font-mono text-[11px] space-y-1.5 mb-3.5 shadow-inner">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                {repo.velocity.status === "active" ? (
+                  <span className="text-emerald-300 font-bold">
+                    +{repo.velocity.starsGained} stars
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-semibold text-[10px]">
+                    Collecting baseline...
+                  </span>
+                )}
+              </div>
+
+              {repo.velocity.status === "active" ? (
+                <span className="text-slate-300 text-[10px]">
+                  {repo.velocity.starsPerHour} ★/hr ({repo.velocity.percentageGrowth}%)
+                </span>
+              ) : (
+                <span className="text-slate-500 text-[10px]">Indexed recently</span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-white/[0.04]">
+              <span>
+                Baseline:{" "}
+                {new Date(repo.velocity.firstSnapshotDate).toLocaleDateString()}
+              </span>
+              <span>Updated {formatRelativeTime(repo.updated_at || repo.pushed_at)}</span>
+            </div>
           </div>
         )}
       </div>

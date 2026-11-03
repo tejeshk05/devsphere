@@ -5,23 +5,57 @@ import {
   validateSessionToken,
   AUTH_COOKIE_NAME,
 } from "@/lib/auth";
+import { dbManager } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+function getClientIdentifier(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  return request.headers.get("x-real-ip") || "127.0.0.1";
+}
 
 export async function POST(request: NextRequest) {
   try {
     const { action, accessKey } = await request.json();
+    const clientIp = getClientIdentifier(request);
 
     if (action === "logout") {
       const response = NextResponse.json({
         success: true,
         message: "Session terminated successfully.",
+        clearClientCache: true,
       });
+
+      // Delete authentication cookie
       response.cookies.delete(AUTH_COOKIE_NAME);
+
+      // Instruct browser to purge stored cache data for security
+      response.headers.set("Clear-Site-Data", '"cache", "storage"');
       return response;
     }
 
     if (action === "login") {
+      // 1. Check shared-store rate limiter before processing
+      const rateCheck = await dbManager.checkAuthRateLimit(clientIp, 5, 15 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Too many failed login attempts. Temporarily locked out for security. Try again in ${rateCheck.retryAfterSeconds} seconds.`,
+            retryAfterSeconds: rateCheck.retryAfterSeconds,
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(rateCheck.retryAfterSeconds),
+            },
+          }
+        );
+      }
+
       if (!accessKey || typeof accessKey !== "string") {
         return NextResponse.json(
           { success: false, error: "Access secret key is required." },
@@ -31,11 +65,37 @@ export async function POST(request: NextRequest) {
 
       const isValid = verifyAccessKey(accessKey);
       if (!isValid) {
+        // Record failure in rate limiter
+        const failRecord = await dbManager.recordAuthFailure(clientIp, 5, 15 * 60 * 1000);
+
+        if (!failRecord.allowed) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Maximum attempts exceeded. IP locked out for 15 minutes.`,
+              retryAfterSeconds: failRecord.retryAfterSeconds,
+            },
+            {
+              status: 429,
+              headers: {
+                "Retry-After": String(failRecord.retryAfterSeconds),
+              },
+            }
+          );
+        }
+
         return NextResponse.json(
-          { success: false, error: "Invalid authorization credentials." },
+          {
+            success: false,
+            error: `Invalid authorization credentials. (${failRecord.remaining} attempts remaining before lockout)`,
+            remainingAttempts: failRecord.remaining,
+          },
           { status: 401 }
         );
       }
+
+      // Successful login: clear previous failure counters
+      await dbManager.clearAuthFailure(clientIp);
 
       const sessionToken = await createSessionToken();
 
@@ -72,8 +132,15 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME);
   const isValid = await validateSessionToken(token?.value);
 
-  return NextResponse.json({
-    authenticated: isValid,
-    ownerAccount: process.env.AUTHORIZED_ACCOUNT_NAME || "Authorized Developer",
-  });
+  return NextResponse.json(
+    {
+      authenticated: isValid,
+      ownerAccount: process.env.AUTHORIZED_ACCOUNT_NAME || "Authorized Developer",
+    },
+    {
+      headers: {
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      },
+    }
+  );
 }

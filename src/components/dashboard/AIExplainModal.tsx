@@ -119,7 +119,7 @@ export function AIExplainModal({ repo, readme, onClose }: AIExplainModalProps) {
                       : "bg-cyan-950/80 border-cyan-700/60 text-cyan-300"
                   }`}
                 >
-                  {isGemini ? "GEMINI 2.5 ACTIVE" : "HEURISTIC ANALYSIS"}
+                  {isGemini ? "GEMINI 2.0 FLASH ACTIVE" : "HEURISTIC FALLBACK"}
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono">
@@ -322,14 +322,16 @@ export function AIExplainModal({ repo, readme, onClose }: AIExplainModalProps) {
             />
             <span className="text-[11px] font-mono text-slate-400">
               Intelligence:{" "}
-              {isGemini ? "Google Gemini 2.5 Flash" : "Rule-Based Heuristic Fallback"}
+              {isGemini
+                ? "Google Gemini 2.0 Flash (Metadata & README Synthesis)"
+                : "Deterministic Heuristic Engine (Fallback)"}
             </span>
           </div>
 
           <a
             href={repo.html_url}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-mono font-medium transition-colors"
           >
             <span>Inspect GitHub Source</span>

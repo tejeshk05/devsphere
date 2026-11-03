@@ -1,4 +1,4 @@
-import { CategoryInfo, TimeFilter } from "@/types/github";
+import { CategoryInfo, TimeFilter, TrendingMode } from "@/types/github";
 
 export const CATEGORIES: CategoryInfo[] = [
   {
@@ -75,10 +75,60 @@ export const CATEGORIES: CategoryInfo[] = [
   },
 ];
 
-export const TIME_FILTERS: { id: TimeFilter; label: string; period: string; days: number }[] = [
-  { id: "daily", label: "Today", period: "Past 24 hours", days: 1 },
-  { id: "weekly", label: "This Week", period: "Past 7 days", days: 7 },
-  { id: "monthly", label: "This Month", period: "Past 30 days", days: 30 },
+export interface TimeFilterConfig {
+  id: TimeFilter;
+  label: string;
+  period: string;
+  hours: number;
+}
+
+export const TIME_FILTERS: TimeFilterConfig[] = [
+  { id: "1h", label: "1 Hour", period: "Past 1 hour", hours: 1 },
+  { id: "6h", label: "6 Hours", period: "Past 6 hours", hours: 6 },
+  { id: "24h", label: "24 Hours", period: "Past 24 hours", hours: 24 },
+  { id: "7d", label: "7 Days", period: "Past 7 days", hours: 168 },
+  // Backward compatibility with legacy parameters
+  { id: "daily", label: "24 Hours", period: "Past 24 hours", hours: 24 },
+  { id: "weekly", label: "7 Days", period: "Past 7 days", hours: 168 },
+  { id: "monthly", label: "30 Days", period: "Past 30 days", hours: 720 },
+];
+
+export interface TrendingModeConfig {
+  id: TrendingMode;
+  label: string;
+  description: string;
+  rankingExplanation: string;
+}
+
+export const TRENDING_MODES: TrendingModeConfig[] = [
+  {
+    id: "fastest-growing",
+    label: "Fastest Growing",
+    description: "Ranked by measured star velocity (growth per hour).",
+    rankingExplanation:
+      "True Star Velocity: Measures (Current Stars - Baseline Stars) / Elapsed Hours across historical hourly snapshots.",
+  },
+  {
+    id: "new-releases",
+    label: "New Releases",
+    description: "Newly created repositories in the chosen window.",
+    rankingExplanation:
+      "New Releases: Repositories created within the selected timeframe, sorted by initial star adoption.",
+  },
+  {
+    id: "rising-ai",
+    label: "Rising AI Projects",
+    description: "AI-focused repositories with high percentage momentum.",
+    rankingExplanation:
+      "Rising AI: Repositories in AI verticals exhibiting rapid percentage growth and star velocity.",
+  },
+  {
+    id: "popular",
+    label: "Popular Projects",
+    description: "Established category leaders ranked by lifetime stars.",
+    rankingExplanation:
+      "Popular Projects: Established ecosystem leaders sorted by total cumulative lifetime stars.",
+  },
 ];
 
 export const LANGUAGE_COLORS: Record<string, string> = {
@@ -105,4 +155,3 @@ export const LANGUAGE_COLORS: Record<string, string> = {
 };
 
 export const DEFAULT_LANGUAGE_COLOR = "#64748b";
-

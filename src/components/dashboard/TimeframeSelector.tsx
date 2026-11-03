@@ -21,7 +21,7 @@ export function TimeframeSelector({
         <span>Window:</span>
       </div>
 
-      {TIME_FILTERS.map((filter) => {
+      {TIME_FILTERS.filter((f) => ["1h", "6h", "24h", "7d"].includes(f.id)).map((filter) => {
         const isSelected = selectedTimeframe === filter.id;
 
         return (

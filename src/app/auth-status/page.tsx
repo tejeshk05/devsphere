@@ -40,6 +40,19 @@ export default function AuthStatusPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "logout" }),
       });
+
+      // Purge Service Worker CacheStorage upon logout
+      if (typeof window !== "undefined" && "caches" in window) {
+        const cacheKeys = await window.caches.keys();
+        await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+      }
+
+      if (typeof window !== "undefined" && navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: "CLEAR_AUTHENTICATED_CACHE",
+        });
+      }
+
       router.push("/login");
       router.refresh();
     } finally {

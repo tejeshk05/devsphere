@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CategoryId, GitHubRepo, TimeFilter } from "@/types/github";
-import { CATEGORIES, TIME_FILTERS } from "@/lib/constants";
+import { CategoryId, GitHubRepo, TimeFilter, TrendingMode } from "@/types/github";
+import { CATEGORIES, TIME_FILTERS, TRENDING_MODES } from "@/lib/constants";
 import { Header } from "@/components/layout/Header";
 import { CategoryPills } from "@/components/dashboard/CategoryPills";
 import { TimeframeSelector } from "@/components/dashboard/TimeframeSelector";
@@ -24,12 +24,13 @@ import {
   Shield,
   HelpCircle,
   ChevronDown,
+  Database,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const [category, setCategory] = useState<CategoryId>("ai");
-  const [timeframe, setTimeframe] = useState<TimeFilter>("daily");
-  const [mode, setMode] = useState<"velocity" | "all-time">("velocity");
+  const [timeframe, setTimeframe] = useState<TimeFilter>("24h");
+  const [mode, setMode] = useState<TrendingMode>("fastest-growing");
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -42,6 +43,8 @@ export default function DashboardPage() {
   const [rateLimit, setRateLimit] = useState<number | undefined>(undefined);
   const [methodology, setMethodology] = useState<string>("");
   const [selectedRepoForAI, setSelectedRepoForAI] = useState<GitHubRepo | null>(null);
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [ingestNotice, setIngestNotice] = useState<string | null>(null);
 
   // 400ms search debounce
   useEffect(() => {
@@ -98,12 +101,33 @@ export default function DashboardPage() {
     }
   };
 
+  const handleManualIngest = async () => {
+    setIsIngesting(true);
+    setIngestNotice(null);
+    try {
+      const res = await fetch("/api/github/ingest", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setIngestNotice(
+          `Snapshot Ingestion Complete: ${data.summary?.newSnapshots ?? 0} new snapshots recorded.`
+        );
+        fetchRepos(1, false);
+      } else {
+        setIngestNotice(`Ingestion error: ${data.error}`);
+      }
+    } catch (e: unknown) {
+      setIngestNotice(`Failed to trigger worker: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setIsIngesting(false);
+      setTimeout(() => setIngestNotice(null), 6000);
+    }
+  };
+
   useEffect(() => {
     fetchRepos(page, page > 1);
   }, [category, timeframe, mode, debouncedQuery, page]);
 
   const activeCategory = CATEGORIES.find((c) => c.id === category) || CATEGORIES[0];
-  const activeTimeframe = TIME_FILTERS.find((t) => t.id === timeframe) || TIME_FILTERS[0];
   const spotlightRepo = repos.length > 0 ? repos[0] : null;
 
   return (
@@ -113,6 +137,22 @@ export default function DashboardPage() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+        {/* Ingestion Notification Banner */}
+        {ingestNotice && (
+          <div className="p-3 rounded-2xl bg-cyan-950/70 border border-cyan-800 text-cyan-200 text-xs font-mono flex items-center justify-between animate-in fade-in">
+            <span className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-cyan-400" />
+              <span>{ingestNotice}</span>
+            </span>
+            <button
+              onClick={() => setIngestNotice(null)}
+              className="text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Breakthrough Spotlight Hero */}
         {!loading && spotlightRepo && !searchQuery && page === 1 && (
           <BreakthroughSpotlight
@@ -127,7 +167,7 @@ export default function DashboardPage() {
         {/* Global Filter Console Bar */}
         <div className="p-4 rounded-2xl bg-[#070b16]/90 border border-white/[0.08] shadow-xl space-y-3.5 backdrop-blur-xl">
           {/* Category Switcher Header */}
-          <div className="flex items-center justify-between px-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
               <span className="text-xs font-mono uppercase tracking-widest text-slate-300 font-bold">
@@ -135,32 +175,58 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* Mode Toggle: Breakout Velocity vs Active Heavyweights */}
-            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-[#03060f] border border-white/[0.08]">
+            {/* 4 Multi-Mode Ranking Selectors */}
+            <div className="flex items-center gap-1 p-0.5 rounded-xl bg-[#03060f] border border-white/[0.08] overflow-x-auto no-scrollbar">
               <button
-                onClick={() => setMode("velocity")}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                  mode === "velocity"
-                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                onClick={() => setMode("fastest-growing")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all whitespace-nowrap ${
+                  mode === "fastest-growing"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Newly created repositories with rapid star growth"
+                title="Ranked by measured star growth rate across historical hourly snapshots"
               >
-                <Rocket className="w-3 h-3 text-cyan-400" />
-                <span>Breakout Feed</span>
+                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                <span>Fastest Growing</span>
               </button>
 
               <button
-                onClick={() => setMode("all-time")}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                  mode === "all-time"
+                onClick={() => setMode("new-releases")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all whitespace-nowrap ${
+                  mode === "new-releases"
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Newly born repositories in this timeframe"
+              >
+                <Rocket className="w-3 h-3 text-cyan-400" />
+                <span>New Releases</span>
+              </button>
+
+              <button
+                onClick={() => setMode("rising-ai")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all whitespace-nowrap ${
+                  mode === "rising-ai"
                     ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Established repositories with high activity and commits"
+                title="AI frameworks exhibiting rapid percentage adoption"
               >
-                <Flame className="w-3 h-3 text-purple-400" />
-                <span>Heavyweights</span>
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>Rising AI</span>
+              </button>
+
+              <button
+                onClick={() => setMode("popular")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all whitespace-nowrap ${
+                  mode === "popular"
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Category leaders sorted by cumulative lifetime stars"
+              >
+                <Flame className="w-3 h-3 text-amber-400" />
+                <span>Popular</span>
               </button>
             </div>
           </div>
@@ -184,7 +250,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 justify-between sm:justify-end text-xs font-mono">
               {!loading && (
                 <div className="text-slate-400">
-                  Indexing{" "}
+                  Tracking{" "}
                   <span className="text-cyan-400 font-bold">{repos.length}</span>{" "}
                   repositories
                 </div>
@@ -192,79 +258,99 @@ export default function DashboardPage() {
 
               {rateLimit !== undefined && (
                 <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] text-slate-400">
-                  <span>Quota:</span>
+                  <span>GitHub Quota:</span>
                   <span className="text-emerald-400 font-bold">{rateLimit}</span>
                 </div>
               )}
 
               <button
+                onClick={handleManualIngest}
+                disabled={isIngesting || loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/60 text-xs text-cyan-300 hover:text-white transition-all disabled:opacity-50 shadow-sm"
+                title="Run hourly ingestion worker now"
+              >
+                <Database
+                  className={`w-3.5 h-3.5 ${isIngesting ? "animate-pulse text-cyan-300" : ""}`}
+                />
+                <span className="hidden sm:inline">
+                  {isIngesting ? "Ingesting..." : "Ingest Snapshot"}
+                </span>
+              </button>
+
+              <button
                 onClick={() => fetchRepos(1, false)}
                 disabled={loading}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs text-slate-300 hover:text-white transition-all disabled:opacity-50"
-                title="Refresh Live GitHub Stream"
+                title="Refresh Live Data"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${loading ? "animate-spin text-cyan-400" : ""}`}
                 />
-                <span className="hidden sm:inline">Sync Stream</span>
+                <span className="hidden sm:inline">Sync</span>
               </button>
             </div>
           </div>
 
           {/* Transparent Ranking Methodology Banner */}
           {methodology && (
-            <div className="px-3 py-1.5 rounded-xl bg-[#03060f]/60 border border-white/[0.05] flex items-center justify-between text-[10px] font-mono text-slate-400">
-              <span className="flex items-center gap-1.5 truncate">
-                <HelpCircle className="w-3 h-3 text-cyan-400 shrink-0" />
+            <div className="px-3.5 py-2 rounded-xl bg-[#03060f]/80 border border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-300">
+              <span className="flex items-center gap-2 truncate">
+                <HelpCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span className="truncate">{methodology}</span>
               </span>
-              <span className="text-slate-500 shrink-0 ml-2">GitHub Search API v3</span>
+              <span className="hidden md:inline-block shrink-0 text-[10px] text-slate-500 font-mono">
+                Formula: (Δstars / Δhours)
+              </span>
             </div>
           )}
         </div>
 
-        {/* Discovery Grid */}
-        {error ? (
-          <div className="p-8 rounded-3xl bg-rose-950/20 border border-rose-800/60 text-center max-w-lg mx-auto space-y-3 shadow-2xl">
-            <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-            <h3 className="text-base font-bold text-rose-200">
-              Ingestion Stream Interrupted
-            </h3>
-            <p className="text-xs text-rose-300/90 leading-relaxed font-mono">
-              {error}
-            </p>
-            <button
-              onClick={() => fetchRepos(1, false)}
-              className="mt-3 px-5 py-2.5 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-white text-xs font-bold font-mono transition-colors"
-            >
-              Retry Connection
-            </button>
-          </div>
-        ) : loading && repos.length === 0 ? (
+        {/* Repository Grid / States */}
+        {loading && !loadingMore ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <RepoCardSkeleton key={i} />
+            {Array.from({ length: 9 }).map((_, idx) => (
+              <RepoCardSkeleton key={idx} />
             ))}
           </div>
-        ) : repos.length === 0 ? (
-          <div className="py-20 text-center space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto text-slate-400 shadow-xl">
-              <Layers className="w-7 h-7 text-cyan-400" />
+        ) : error ? (
+          <div className="py-20 text-center space-y-4 max-w-md mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-400">
+              <AlertCircle className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-200">
-              Zero Repositories Found
+            <h3 className="text-base font-bold text-white tracking-tight">
+              Data Synchronization Interrupted
             </h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto font-mono">
-              No repositories matched your filters. Try toggling to &quot;Heavyweights&quot; or
-              expanding to Weekly/Monthly windows.
+            <p className="text-xs text-slate-400 leading-relaxed font-mono">{error}</p>
+            <button
+              onClick={() => fetchRepos(1, false)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-mono text-slate-300 hover:text-white transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Fetch</span>
+            </button>
+          </div>
+        ) : repos.length === 0 ? (
+          <div className="py-24 text-center space-y-3 font-mono">
+            <p className="text-xs text-slate-400">
+              No repositories tracked under this criteria.
             </p>
+            <button
+              onClick={() => {
+                setCategory("ai");
+                setTimeframe("24h");
+                setMode("fastest-growing");
+              }}
+              className="text-xs text-cyan-400 hover:underline"
+            >
+              Reset to All AI Repositories
+            </button>
           </div>
         ) : (
-          <div className="space-y-6 pb-16">
+          <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {repos.map((repo, idx) => (
                 <RepoCard
-                  key={`${repo.id}-${idx}`}
+                  key={repo.id}
                   repo={repo}
                   rankIndex={idx}
                   onExplainClick={(r) => setSelectedRepoForAI(r)}
@@ -272,23 +358,23 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Pagination: Load More */}
+            {/* Pagination Controls */}
             {hasMore && (
-              <div className="text-center pt-4">
+              <div className="flex justify-center pt-2 pb-8">
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={loadingMore}
-                  className="px-6 py-3 rounded-xl bg-[#090e1c] hover:bg-[#0d1629] border border-white/[0.1] text-xs font-mono font-bold text-slate-200 hover:text-white transition-all disabled:opacity-50 inline-flex items-center gap-2 shadow-lg"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-slate-300 hover:text-white transition-all disabled:opacity-50 shadow-sm"
                 >
                   {loadingMore ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                      <span>Fetching Next 30 Repositories...</span>
+                      <span>Loading Next Page...</span>
                     </>
                   ) : (
                     <>
-                      <span>Load Page {page + 1}</span>
-                      <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <span>Load More Repositories</span>
                     </>
                   )}
                 </button>

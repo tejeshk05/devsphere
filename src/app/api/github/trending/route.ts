@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchTrendingRepos } from "@/lib/github";
 import { verifyRequestAuth } from "@/lib/auth";
-import { CategoryId, TimeFilter } from "@/types/github";
+import { CategoryId, TimeFilter, TrendingMode } from "@/types/github";
+import { startHourlyScheduler } from "@/lib/services/ingestion";
 
 export const dynamic = "force-dynamic";
+
+// Ensure scheduler is active in server environment
+try {
+  startHourlyScheduler();
+} catch (e) {
+  // Ignored in edge / build prerender
+}
 
 export async function GET(request: NextRequest) {
   // Direct API authentication guard
@@ -17,8 +25,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = (searchParams.get("category") as CategoryId) || "ai";
-    const timeframe = (searchParams.get("timeframe") as TimeFilter) || "daily";
-    const mode = (searchParams.get("mode") as "velocity" | "all-time") || "velocity";
+    const timeframe = (searchParams.get("timeframe") as TimeFilter) || "24h";
+    const mode = (searchParams.get("mode") as TrendingMode) || "fastest-growing";
     const page = parseInt(searchParams.get("page") || "1", 10);
     const query = searchParams.get("q") || undefined;
 
@@ -32,7 +40,7 @@ export async function GET(request: NextRequest) {
         mode,
         page,
         count: result.repos.length,
-        hasMore: result.repos.length === 30,
+        hasMore: result.repos.length >= 30,
         repos: result.repos,
         rateLimitRemaining: result.rateLimitRemaining,
         cached: result.cached,

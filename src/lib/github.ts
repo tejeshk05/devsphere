@@ -1,6 +1,7 @@
-import { CATEGORIES, TIME_FILTERS } from "@/lib/constants";
-import { CategoryId, GitHubRepo, GitHubSearchResponse, TimeFilter } from "@/types/github";
+import { CATEGORIES, TIME_FILTERS, TRENDING_MODES, TimeFilterConfig, TrendingModeConfig } from "@/lib/constants";
+import { CategoryId, GitHubRepo, TimeFilter, TrendingMode } from "@/types/github";
 import { getDateThreshold } from "@/lib/utils";
+import { dbManager, VelocityMetric } from "@/lib/db";
 
 interface CacheEntry {
   timestamp: number;
@@ -11,7 +12,7 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-const CATEGORY_SEARCH_QUALIFIERS: Record<CategoryId, string> = {
+const CATEGORY_SEARCH_QUALIFIERS: Record<string, string> = {
   ai: "topic:ai",
   "machine-learning": "topic:machine-learning",
   "generative-ai": "topic:generative-ai",
@@ -22,11 +23,69 @@ const CATEGORY_SEARCH_QUALIFIERS: Record<CategoryId, string> = {
   mlops: "topic:mlops",
 };
 
+/**
+ * Resolves window hours from TimeFilter
+ */
+export function getWindowHours(timeframe: TimeFilter): number {
+  const cfg = TIME_FILTERS.find((t) => t.id === timeframe);
+  if (cfg) return cfg.hours;
+  if (timeframe === "1h") return 1;
+  if (timeframe === "6h") return 6;
+  if (timeframe === "24h" || timeframe === "daily") return 24;
+  if (timeframe === "7d" || timeframe === "weekly") return 168;
+  if (timeframe === "monthly") return 720;
+  return 24;
+}
+
+/**
+ * Normalizes a database VelocityMetric into a standard frontend GitHubRepo
+ */
+function metricToGitHubRepo(m: VelocityMetric): GitHubRepo {
+  return {
+    id: m.repo.id,
+    name: m.repo.name,
+    full_name: m.repo.full_name,
+    private: false,
+    owner: {
+      login: m.repo.owner,
+      id: m.repo.id,
+      avatar_url: `https://avatars.githubusercontent.com/u/${m.repo.id % 100000}?v=4`,
+      html_url: `https://github.com/${m.repo.owner}`,
+    },
+    html_url: m.repo.html_url,
+    description: m.repo.description,
+    fork: false,
+    url: `https://api.github.com/repos/${m.repo.full_name}`,
+    created_at: m.repo.created_at,
+    updated_at: new Date(m.repo.last_snapshot_at).toISOString(),
+    pushed_at: m.repo.pushed_at || new Date(m.repo.last_snapshot_at).toISOString(),
+    homepage: null,
+    size: 1024,
+    stargazers_count: m.currentStars,
+    watchers_count: m.currentStars,
+    language: m.repo.language,
+    forks_count: m.repo.forks_count,
+    open_issues_count: m.repo.open_issues_count,
+    topics: [m.repo.category],
+    default_branch: "main",
+    velocity: {
+      starsGained: m.starsGained,
+      elapsedHours: m.elapsedHours,
+      starsPerHour: m.starsPerHour,
+      percentageGrowth: m.percentageGrowth,
+      previousStars: m.previousStars,
+      firstSnapshotDate: m.firstSnapshotDate,
+      lastSnapshotDate: m.lastSnapshotDate,
+      status: m.status,
+    },
+  };
+}
+
 export async function fetchTrendingRepos(
-  category: CategoryId = "ai",
-  timeframe: TimeFilter = "daily",
+  category: CategoryId | string = "ai",
+  timeframe: TimeFilter = "24h",
   queryText?: string,
-  mode: "velocity" | "all-time" = "velocity",
+  mode: TrendingMode | string = "fastest-growing",
   page: number = 1
 ): Promise<{
   repos: GitHubRepo[];
@@ -34,8 +93,19 @@ export async function fetchTrendingRepos(
   cached: boolean;
   rankingMethodology: string;
 }> {
+  // Normalize legacy mode parameters
+  let normalizedMode: TrendingMode = "fastest-growing";
+  if (mode === "new-releases") normalizedMode = "new-releases";
+  else if (mode === "popular" || mode === "all-time") normalizedMode = "popular";
+  else if (mode === "rising-ai") normalizedMode = "rising-ai";
+  else normalizedMode = "fastest-growing";
+
+  const windowHours = getWindowHours(timeframe);
+  const timeConfig = TIME_FILTERS.find((t) => t.id === timeframe) || TIME_FILTERS[2];
+  const modeConfig = TRENDING_MODES.find((m) => m.id === normalizedMode) || TRENDING_MODES[0];
+
   const safePage = Math.max(1, Math.min(page, 10));
-  const cacheKey = `${category}:${timeframe}:${mode}:${safePage}:${queryText || ""}`;
+  const cacheKey = `${category}:${timeframe}:${normalizedMode}:${safePage}:${queryText || ""}`;
   const now = Date.now();
 
   const cached = cache.get(cacheKey);
@@ -47,22 +117,44 @@ export async function fetchTrendingRepos(
     };
   }
 
-  const timeConfig = TIME_FILTERS.find((t) => t.id === timeframe) || TIME_FILTERS[0];
-  const dateThreshold = getDateThreshold(timeConfig.days);
+  // 1. Check if database has tracked snapshots for this mode
+  try {
+    const dbMetrics = await dbManager.getRankedRepositories(
+      category,
+      normalizedMode,
+      windowHours,
+      50
+    );
+
+    if (dbMetrics.length > 0 && (!queryText || !queryText.trim())) {
+      const repos = dbMetrics.map(metricToGitHubRepo);
+      const rankingMethodology = `${modeConfig.label} (${timeConfig.label}): ${modeConfig.rankingExplanation}`;
+
+      cache.set(cacheKey, {
+        timestamp: now,
+        data: repos,
+        rankingMethodology,
+      });
+
+      return {
+        repos,
+        cached: false,
+        rankingMethodology,
+      };
+    }
+  } catch (err) {
+    console.warn("[GitHub Service] Error querying database velocity snapshots:", err);
+  }
+
+  // 2. Fallback / Live GitHub Search Query Builder
+  const dateThreshold = getDateThreshold(Math.max(1, Math.ceil(windowHours / 24)));
   const baseQualifier = CATEGORY_SEARCH_QUALIFIERS[category] || "topic:ai";
 
   let searchQuery = "";
-  let rankingMethodology = "";
-
-  if (mode === "velocity") {
-    // Breakout Velocity Feed: Repositories created within the timeframe
-    // Sorted by stars to surface viral new projects rather than legacy frameworks
+  if (normalizedMode === "new-releases") {
     searchQuery = `${baseQualifier} created:>${dateThreshold}`;
-    rankingMethodology = `Breakout Velocity: Repositories created within the ${timeConfig.period} sorted by star adoption.`;
   } else {
-    // Active Ecosystem: Established repositories actively pushed to within the timeframe
     searchQuery = `${baseQualifier} pushed:>${dateThreshold}`;
-    rankingMethodology = `Active Heavyweights: Repositories updated within the ${timeConfig.period} sorted by cumulative stars.`;
   }
 
   if (queryText && queryText.trim()) {
@@ -93,7 +185,6 @@ export async function fetchTrendingRepos(
     : undefined;
 
   if (!response.ok) {
-    // If rate limited, fall back to cached data if available
     if (cached) {
       return {
         repos: cached.data,
@@ -102,48 +193,119 @@ export async function fetchTrendingRepos(
         rankingMethodology: cached.rankingMethodology,
       };
     }
-
-    const errorBody = await response.text();
-    let parsedMessage = errorBody;
-    try {
-      const errJson = JSON.parse(errorBody);
-      parsedMessage = errJson.message || errorBody;
-    } catch {
-      // ignore
-    }
-
-    throw new Error(
-      `GitHub API (${response.status}): ${parsedMessage}. Configure GITHUB_TOKEN in .env.local to enjoy 5,000 requests/hour.`
-    );
+    throw new Error(`GitHub API returned HTTP ${response.status}: ${response.statusText}`);
   }
 
-  const data: GitHubSearchResponse = await response.json();
-  let repos = data.items || [];
+  const data = await response.json();
+  const rawRepos: GitHubRepo[] = data.items || [];
 
-  // Fallback: If "velocity" mode on daily finds fewer than 5 brand new repos in niche tags,
-  // gracefully blend with recent push velocity so user never sees a blank screen
-  if (mode === "velocity" && repos.length < 5 && safePage === 1) {
-    const fallbackUrl = `https://api.github.com/search/repositories?q=${encodeURIComponent(
-      `${baseQualifier} pushed:>${dateThreshold}`
-    )}&sort=stars&order=desc&per_page=30&page=1`;
+  // Record snapshots in background for discovered repos and attach velocity
+  const enrichedRepos: GitHubRepo[] = [];
+  for (const r of rawRepos) {
+    // Record current snapshot
+    await dbManager
+      .recordSnapshot({
+        id: r.id,
+        owner: r.owner.login,
+        name: r.name,
+        full_name: r.full_name,
+        description: r.description,
+        language: r.language,
+        category: category,
+        html_url: r.html_url,
+        created_at: r.created_at,
+        pushed_at: r.pushed_at,
+        stars: r.stargazers_count,
+        forks: r.forks_count,
+        open_issues: r.open_issues_count,
+      })
+      .catch(() => {});
 
-    try {
-      const fallbackRes = await fetch(fallbackUrl, { headers });
-      if (fallbackRes.ok) {
-        const fallbackData = await fallbackRes.json();
-        repos = fallbackData.items || [];
-        rankingMethodology = `Active Pulse (Pushed within ${timeConfig.period}) sorted by star velocity.`;
-      }
-    } catch {
-      // ignore fallback error
-    }
+    const velocityMetric = await dbManager.getRepoVelocity(r.id, windowHours).catch(() => null);
+
+    enrichedRepos.push({
+      ...r,
+      velocity: velocityMetric
+        ? {
+            starsGained: velocityMetric.starsGained,
+            elapsedHours: velocityMetric.elapsedHours,
+            starsPerHour: velocityMetric.starsPerHour,
+            percentageGrowth: velocityMetric.percentageGrowth,
+            previousStars: velocityMetric.previousStars,
+            firstSnapshotDate: velocityMetric.firstSnapshotDate,
+            lastSnapshotDate: velocityMetric.lastSnapshotDate,
+            status: velocityMetric.status,
+          }
+        : {
+            starsGained: null,
+            elapsedHours: null,
+            starsPerHour: null,
+            percentageGrowth: null,
+            previousStars: null,
+            firstSnapshotDate: new Date().toISOString(),
+            lastSnapshotDate: new Date().toISOString(),
+            status: "collecting_data",
+          },
+    });
   }
+
+  const rankingMethodology = `${modeConfig.label} (${timeConfig.label}): ${modeConfig.rankingExplanation}`;
 
   cache.set(cacheKey, {
     timestamp: now,
-    data: repos,
+    data: enrichedRepos,
     rankingMethodology,
   });
 
-  return { repos, rateLimitRemaining, cached: false, rankingMethodology };
+  return {
+    repos: enrichedRepos,
+    rateLimitRemaining,
+    cached: false,
+    rankingMethodology,
+  };
+}
+
+export async function fetchRepoDetails(
+  owner: string,
+  name: string
+): Promise<{ repo: GitHubRepo; readme: string | null }> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "DevSphere-Discovery-Dashboard",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  if (process.env.GITHUB_TOKEN) {
+    headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
+  }
+
+  const repoRes = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
+    headers,
+    next: { revalidate: 600 },
+  });
+
+  if (!repoRes.ok) {
+    throw new Error(`Failed to fetch repo ${owner}/${name}: HTTP ${repoRes.status}`);
+  }
+
+  const repo: GitHubRepo = await repoRes.json();
+
+  let readme: string | null = null;
+  try {
+    const readmeRes = await fetch(`https://api.github.com/repos/${owner}/${name}/readme`, {
+      headers: {
+        ...headers,
+        Accept: "application/vnd.github.raw+json",
+      },
+      next: { revalidate: 600 },
+    });
+
+    if (readmeRes.ok) {
+      readme = await readmeRes.text();
+    }
+  } catch (err) {
+    console.warn(`Could not fetch README for ${owner}/${name}:`, err);
+  }
+
+  return { repo, readme };
 }

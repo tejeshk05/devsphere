@@ -3,8 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
+import { renderSanitizedMarkdown } from "@/lib/markdown";
 import { GitHubRepo } from "@/types/github";
 import { formatNumber, formatRelativeTime } from "@/lib/utils";
 import { LANGUAGE_COLORS, DEFAULT_LANGUAGE_COLOR } from "@/lib/constants";
@@ -291,13 +290,7 @@ export default function RepoDetailPage() {
                 <div
                   className="prose prose-invert max-w-none text-slate-300 text-xs sm:text-sm leading-relaxed overflow-x-auto space-y-4 font-sans [&_a]:text-cyan-400 [&_a:hover]:underline [&_pre]:bg-[#03060f] [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-white/[0.08] [&_code]:font-mono [&_code]:text-cyan-300 [&_h1]:text-white [&_h1]:text-xl [&_h2]:text-white [&_h2]:text-lg [&_h3]:text-slate-100 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                   dangerouslySetInnerHTML={{
-                    __html:
-                      typeof window !== "undefined"
-                        ? DOMPurify.sanitize(marked.parse(readme) as string, {
-                            USE_PROFILES: { html: true },
-                            ADD_ATTR: ["target", "rel"],
-                          })
-                        : "",
+                    __html: renderSanitizedMarkdown(readme),
                   }}
                 />
               ) : (

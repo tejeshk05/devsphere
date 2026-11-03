@@ -1,6 +1,6 @@
 # 🌐 DevSphere — AI & Tech Discovery Dashboard
 
-> A mobile-first, dark-themed personal discovery platform for trending GitHub repositories in Artificial Intelligence and modern open-source ecosystems.
+> A mobile-first, dark-themed personal discovery platform for trending GitHub repositories in Artificial Intelligence and modern open-source ecosystems. Featuring a true star velocity calculation engine backed by historical snapshots.
 
 ![DevSphere](public/icons/icon-192.png)
 
@@ -9,13 +9,29 @@
 ## ✨ Features
 
 - **⚡ 100% Real Live GitHub Data**: Directly interfaces with the official GitHub REST API v2022-11-28. No fake or mock data.
-- **🚀 Dual Discovery Engine (Velocity vs All-Time)**:
-  - **Breakout Velocity**: Discovers newly created repositories (`created:>threshold`) surging within your selected window (Past 24h, 7d, 30d).
-  - **All-Time Heavyweights**: Tracks established category leaders with active commits (`pushed:>threshold`).
-  - Transparent ranking methodology explained directly in the dashboard UI.
-  - Infinite / Multi-page loading with pagination support.
+- **📈 True Star Velocity Calculation Engine**:
+  - Replaces misleading cumulative star sorting with an append-only historical snapshot database.
+  - Computes mathematically rigorous star growth rates:
+    $$\text{velocity} = \frac{\text{Current Stars} - \text{Baseline Stars}}{\text{Elapsed Hours}} \quad (\text{stars/hour})$$
+  - Multi-window calculation: **1 hour, 6 hours, 24 hours, and 7 days**.
+  - Displays: Current stars, stars gained in window, stars per hour, percentage growth, and first snapshot date.
+  - Automatically identifies new repositories with insufficient historical intervals and displays *"Collecting baseline..."*.
+- **🧭 4 Purpose-Built Trending Modes**:
+  1. **Fastest Growing**: Ranked by verified star velocity (growth per hour).
+  2. **New Releases**: Recently created repositories in the chosen window sorted by initial adoption.
+  3. **Rising AI Projects**: Repositories in AI verticals exhibiting rapid percentage growth and momentum.
+  4. **Popular Projects**: Established category leaders sorted by lifetime cumulative stars.
+- **🤖 Background Ingestion Worker**:
+  - Scheduled hourly ingestion worker pulls new snapshots across 8 AI verticals.
+  - Deduplicates snapshots within the same hourly interval bucket (`UNIQUE(repo_id, interval_bucket)`).
+  - Can be triggered automatically in the background or on-demand via `npm run ingest` and the dashboard UI.
+- **🔒 Enterprise-Grade Security Hardening**:
+  - **Shared-Store Rate Limiter**: Database-backed brute-force protection locks out malicious IPs after 5 failed login attempts for 15 minutes (`HTTP 429 Too Many Requests`).
+  - **Private Service Worker Caching**: Authenticated user pages and private bookmark data are strictly excluded from Service Worker caches.
+  - **Logout Cache Purge**: Logging out sends `Clear-Site-Data: "cache", "storage"` and notifies the Service Worker to purge all stored offline caches.
+  - **Safe External Links**: DOMPurify hooks enforce `target="_blank"` and `rel="noopener noreferrer"` across all rendered markdown documentation, preventing reverse tabnabbing.
 - **🎨 Premium Dark UI/UX**: Handcrafted developer dashboard featuring deep-space backgrounds, subtle borders, glowing neon accents, and smooth glassmorphism.
-- **📱 Mobile-First & PWA Installable**: Ergonomic bottom navigation bar for mobile phones, horizontal category pill sliders, offline caching with a dedicated Service Worker (`/sw.js`), and full Web App Manifest (`manifest.webmanifest`) support for iOS and Android homescreen installation with PNG and Apple Touch icons.
+- **📱 Mobile-First & PWA Installable**: Ergonomic bottom navigation bar for mobile phones, horizontal category pill sliders, and full Web App Manifest (`manifest.webmanifest`) support for iOS and Android homescreen installation with PNG and Apple Touch icons.
 - **🧠 8 Specialized AI Verticals**:
   1. **AI**: Core artificial intelligence frameworks and foundational research.
   2. **Machine Learning**: Classical & statistical learning engines and tools.
@@ -25,12 +41,8 @@
   6. **RAG**: Retrieval-Augmented Generation, vector embeddings, and search indices.
   7. **Computer Vision**: Object detection, segmentation (`YOLO`, `OpenCV`), and visual intelligence.
   8. **MLOps**: Model deployment, feature stores, monitoring, and orchestration pipelines.
-- **⏱️ Flexible Trending Windows**: Daily (past 24h), Weekly (past 7d), and Monthly (past 30d) velocity filters.
 - **🔖 Persistent Bookmarks with JSON Backup & Restore**: Save repositories locally in your browser with zero latency. Includes bookmark search, JSON export, and full schema-validated JSON import with duplicate protection.
-- **📄 Deep Repository Detail Pages**: View metadata, stargazers, forks, open issues, commit velocity, and rendered `README.md` documents securely sanitized with DOMPurify against XSS.
-- **🤖 AI Repository Explainer Architecture**: Powered by Google Gemini (with resilient heuristic fallback) that ingests the repository `README.md` and file structure to provide plain-English summaries, architectural highlights, learning roadmaps, and developer use cases.
-- **🔒 Cryptographic Session Authentication**: Protect your private cloud deployment. Only you (the authorized owner) can access the dashboard using HMAC-SHA256 signed session tokens verified via Next.js Middleware and direct API guards with secure HTTP-only cookies.
-- **🛡️ Server-Side Secret Protection**: Keeps all GitHub tokens and AI API keys on the server. No secrets are ever leaked to client bundles.
+- **🤖 AI Repository Explainer Architecture**: Powered by Google Gemini 2.0 Flash (with resilient heuristic fallback) that ingests the repository `README.md` and metadata to provide plain-English summaries, architectural highlights, learning roadmaps, and developer use cases.
 
 ---
 
@@ -39,10 +51,57 @@
 - **Framework**: [Next.js](https://nextjs.org) 16 (App Router, Server & Client Components)
 - **Language**: [TypeScript](https://www.typescriptlang.org) (Strict type checking)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com) v3 + Custom Dark Theme
-- **Icons**: [Lucide React](https://lucide.dev) + Custom Vector Icons
-- **Security**: Node.js `crypto` (HMAC-SHA256 sessions) & `DOMPurify` (HTML sanitization)
-- **Offline & PWA**: Custom Service Worker (`public/sw.js`), Web Manifest & PNG icons
-- **API**: Official GitHub REST API & Google Gemini API
+- **Database**: SQLite (`sql.js` WASM engine with binary persistence) + PostgreSQL support via `pg`
+- **Security**: Node.js Web Crypto (HMAC-SHA256 sessions), DOMPurify (HTML sanitization), Shared-store Rate Limiter
+- **PWA & Offline**: Custom Service Worker (`public/sw.js`), Web Manifest & PNG icons
+- **API**: Official GitHub REST API & Google Gemini 2.0 Flash API
+
+---
+
+## 🗄️ Database Schema
+
+DevSphere uses a portable, append-only historical database:
+
+```sql
+-- Repositories metadata table
+CREATE TABLE repositories (
+  id INTEGER PRIMARY KEY,
+  owner TEXT NOT NULL,
+  name TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  description TEXT,
+  language TEXT,
+  category TEXT NOT NULL,
+  html_url TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  pushed_at TEXT,
+  first_snapshot_at INTEGER NOT NULL,
+  last_snapshot_at INTEGER NOT NULL,
+  current_stars INTEGER NOT NULL,
+  forks_count INTEGER DEFAULT 0,
+  open_issues_count INTEGER DEFAULT 0
+);
+
+-- Append-only star snapshots table
+CREATE TABLE star_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repo_id INTEGER NOT NULL,
+  stars INTEGER NOT NULL,
+  timestamp INTEGER NOT NULL,
+  interval_bucket TEXT NOT NULL,
+  UNIQUE(repo_id, interval_bucket),
+  FOREIGN KEY (repo_id) REFERENCES repositories(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_snapshots_repo_time ON star_snapshots(repo_id, timestamp);
+
+-- Shared-store brute-force login rate limiting
+CREATE TABLE auth_rate_limits (
+  key TEXT PRIMARY KEY,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at INTEGER NOT NULL
+);
+```
 
 ---
 
@@ -51,8 +110,7 @@
 Follow these simple steps to run DevSphere on your local machine:
 
 ### 1. Prerequisites
-Ensure you have **Node.js** (v18.17+ or v20/v22) installed on your computer.
-Check with:
+Ensure you have **Node.js** (v18.17+ or v20/v22) installed on your computer:
 ```bash
 node -v
 npm -v
@@ -76,118 +134,67 @@ cp .env.example .env.local
 ```
 *(On Windows PowerShell, run: `Copy-Item .env.example .env.local`)*
 
-Open `.env.local` in your editor and configure your settings:
+Open `.env.local` in your editor:
 ```env
-# 1. Private Login Secret (Choose your personal access key)
+# 1. Private Login Secret
 DEVSPHERE_ACCESS_KEY=your-secure-access-key-here
 AUTH_SESSION_SECRET=your-random-32-char-session-secret-vault
 AUTHORIZED_ACCOUNT_NAME="D. Tejesh Kumar"
 
-# 2. GitHub Token (Optional but Recommended)
-# Unauthenticated GitHub requests are limited to 60/hr.
-# Adding a free personal token unlocks 5,000 requests/hr!
-# Generate one at: https://github.com/settings/tokens
+# 2. GitHub Token (Server-Side Only - unlocks 5,000 req/hr)
+# Generate at: https://github.com/settings/tokens
 GITHUB_TOKEN=ghp_yourPersonalAccessTokenHere
 
-# 3. Gemini API Key (Optional for AI Explanations)
+# 3. Gemini API Key (Server-Side Only)
 # Get a free key at: https://aistudio.google.com/app/apikey
 GEMINI_API_KEY=AIzaSyYourGeminiApiKeyHere
 ```
 
-### 5. Start the Development Server
+### 5. Run Ingestion Worker (Optional)
+Seed or pull the latest snapshot data:
+```bash
+npm run ingest
+```
+
+### 6. Start the Development Server
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-When prompted by the login vault, enter your `DEVSPHERE_ACCESS_KEY`.
+Open [http://localhost:3000](http://localhost:3000) in your browser and enter your `DEVSPHERE_ACCESS_KEY`.
 
 ---
 
-## 📱 Installing DevSphere as a PWA on Your Phone
+## 🧪 Verification & Test Commands
 
-1. Deploy DevSphere to Vercel or any HTTPS host (e.g. `https://your-devsphere.vercel.app`).
-2. Open the URL in Safari (iOS) or Chrome (Android).
-3. **On iOS (Safari)**: Tap the **Share** button (box with upward arrow) -> Tap **"Add to Home Screen"**.
-4. **On Android (Chrome)**: Tap the three dots menu -> Tap **"Install App"** (or click the **"Install App"** button in DevSphere's top header).
-5. DevSphere will now run as a full-screen, standalone app on your smartphone with instant launch, offline cache fallback, and homescreen integration!
+DevSphere includes an automated test runner for all Phase 3 features:
 
----
+```bash
+# Run complete verification test suite
+npx tsx scripts/run-all-tests.ts
 
-## 🏗️ Project Architecture & File Structure
+# Test database persistence and velocity formulas
+npm run test:db
 
-```
-devsphere/
-├── public/
-│   ├── icons/
-│   │   ├── apple-touch-icon.png  # Apple homescreen icon (180x180)
-│   │   ├── icon-192.png          # PWA raster icon (192x192)
-│   │   ├── icon-512.png          # PWA high-res raster icon (512x512)
-│   │   ├── icon-192.svg          # Vector icon
-│   │   └── icon-512.svg          # Vector high-res icon
-│   ├── sw.js                     # Offline caching Service Worker
-│   └── favicon.ico
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── ai/explain/       # Server endpoint for AI codebase analysis
-│   │   │   ├── auth/             # Login, logout, session status endpoint
-│   │   │   └── github/
-│   │   │       ├── repo/         # Server endpoint for repo details & README
-│   │   │       └── trending/     # Server endpoint for GitHub trending search
-│   │   ├── ai-explainer/         # AI Architecture Explainer Studio page
-│   │   ├── auth-status/          # Security & Owner authorization page
-│   │   ├── bookmarks/            # Bookmarks page with JSON Export & Import
-│   │   ├── login/                # Private developer authentication vault
-│   │   ├── repo/[owner]/[name]   # Dynamic repository detail page
-│   │   ├── globals.css           # Dark theme & glassmorphic utilities
-│   │   ├── layout.tsx            # Root layout (Sidebar + Mobile Nav + PWA)
-│   │   ├── manifest.ts           # Native Next.js Web App Manifest
-│   │   └── page.tsx              # Main Discovery Dashboard (Velocity / All-Time)
-│   ├── components/
-│   │   ├── dashboard/
-│   │   │   ├── AIExplainModal.tsx     # Interactive AI architecture drawer
-│   │   │   ├── CategoryPills.tsx      # Swipeable 8-category selector
-│   │   │   ├── RepoCard.tsx           # Repository card with live metrics
-│   │   │   ├── RepoCardSkeleton.tsx   # Shimmer loading skeleton
-│   │   │   └── TimeframeSelector.tsx  # Daily, Weekly, Monthly toggle
-│   │   ├── layout/
-│   │   │   ├── Header.tsx             # Responsive header with live search
-│   │   │   ├── MobileNav.tsx          # Fixed bottom navigation for phones
-│   │   │   └── Sidebar.tsx            # Desktop developer sidebar
-│   │   └── pwa/
-│   │       └── ServiceWorkerRegister.tsx # Client-side Service Worker registration
-│   ├── context/
-│   │   └── BookmarkContext.tsx   # Persistent LocalStorage bookmarks state & import
-│   ├── lib/
-│   │   ├── ai/explainer.ts       # Gemini AI & heuristic analyzer engine
-│   │   ├── auth.ts               # Cryptographic HMAC session tokens & constant-time validation
-│   │   ├── constants.ts          # Categories, color maps & timefilters
-│   │   ├── github.ts             # GitHub search query builder & server cache
-│   │   └── utils.ts              # Relative time & number formatters
-│   ├── middleware.ts             # Edge middleware private auth gatekeeper
-│   └── types/
-│       └── github.ts             # TypeScript interfaces for repos & APIs
-├── .env.example                  # Example environment variables (committed)
-├── .env.local                    # Local environment secrets (git-ignored)
-├── LICENSE                       # Official MIT License file
-├── next.config.ts                # Next.js App Router configuration
-├── package.json
-├── tailwind.config.ts            # Dark theme Tailwind configuration
-└── tsconfig.json
+# Run hourly ingestion manually
+npm run ingest
+
+# Run TypeScript compilation check
+npx tsc --noEmit
+
+# Run Next.js production build
+npm run build
 ```
 
 ---
 
-## 🔒 Security Best Practices
+## 🔒 Security Architecture
 
-- **HMAC-SHA256 Session Tokens**: Uses Node.js `crypto` with `createHmac` and random entropy to prevent token spoofing, replay attacks, and cookie forgery.
-- **Double-Layered Auth Guards**: Enforced both at the Edge Middleware level and directly inside internal API routes via `verifyRequestAuth(request)`.
+- **HMAC-SHA256 Session Tokens**: Universal Web Crypto API (`crypto.subtle`) tokens prevent token spoofing, replay attacks, and cookie forgery across both Edge Middleware and API routes.
+- **Database-Backed Rate Limiting**: Tracks failed authentication attempts in a persistent table. 5 failed attempts trigger a 15-minute IP lockout with `HTTP 429 Too Many Requests` and `Retry-After: 900`.
 - **Zero Client Leakage**: All GitHub tokens and Gemini API keys reside strictly on the server; client bundles contain zero secrets.
-- **Fail-Secure Defaults**: In production environments (`NODE_ENV=production`), the application refuses to start or authenticate if master access keys or session secrets are unset.
-- **DOMPurify HTML Sanitization**: Raw GitHub README documents are stripped of malicious script injection, onerror triggers, and iframe traps before client rendering.
-- **Hardened Cookies**: Auth cookies utilize `HttpOnly`, `SameSite=Lax`, and `Secure` (in production) flags with a 30-day bounded expiration.
+- **DOMPurify HTML Sanitization & Safe External Links**: Raw GitHub README documents are stripped of malicious script injection, onerror triggers, and iframe traps, while ensuring all external links enforce `target="_blank"` and `rel="noopener noreferrer"`.
+- **Service Worker Cache Isolation**: Sensitive authenticated navigation HTML shells are never stored in Service Worker caches; logging out triggers complete cache deletion via `Clear-Site-Data`.
 
 ---
 

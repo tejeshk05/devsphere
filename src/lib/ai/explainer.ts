@@ -20,8 +20,9 @@ export interface ExplainRepoRequest {
 
 /**
  * AI Repository Explainer Service Architecture
- * Connects directly to Google Gemini 2.5 Flash using server-side GEMINI_API_KEY.
+ * Connects directly to Google Gemini 2.0 Flash (with 1.5 Flash fallback) using server-side GEMINI_API_KEY.
  * Safely ingests repository README content and metadata with token budgeting.
+ * Focuses on metadata & README architectural synthesis without misleading source-tree audit claims.
  */
 export async function explainRepository(
   req: ExplainRepoRequest
@@ -29,14 +30,18 @@ export async function explainRepository(
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (apiKey) {
-    try {
-      // Safe truncation of README to prevent prompt overflow (~3,500 chars)
-      const truncatedReadme = req.readme
-        ? req.readme.slice(0, 3500).replace(/<!--[\s\S]*?-->/g, "").trim()
-        : "No README documentation provided.";
+    // Attempt Gemini 2.0 Flash first, fallback to Gemini 1.5 Flash
+    const modelCandidates = ["gemini-2.0-flash", "gemini-1.5-flash"];
 
-      const promptText = `You are a Principal Software Architect and Open-Source Code Auditor.
-Analyze the following GitHub repository using its metadata and README excerpt:
+    for (const model of modelCandidates) {
+      try {
+        // Safe truncation of README to prevent prompt overflow (~3,500 chars)
+        const truncatedReadme = req.readme
+          ? req.readme.slice(0, 3500).replace(/<!--[\s\S]*?-->/g, "").trim()
+          : "No README documentation provided.";
+
+        const promptText = `You are a Principal Software Architect and Open-Source Code Auditor.
+Synthesize the engineering architecture of the following repository using its verified metadata and README documentation specifications (Note: direct source-tree file inspection is not mounted):
 
 REPOSITORY METADATA:
 - Name: ${req.owner}/${req.name}
@@ -69,58 +74,59 @@ Evaluate the engineering architecture and return a strict JSON response matching
 }
 Respond strictly with valid JSON. No markdown backticks, no conversational preamble.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: promptText }],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.25,
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const json = await response.json();
-        const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidateText) {
-          const parsed = JSON.parse(candidateText);
-          return {
-            summary: parsed.summary,
-            architectureHighlights: parsed.architectureHighlights || [],
-            whyTrending:
-              parsed.whyTrending || "Rapid momentum in modern developer workflows.",
-            useCases: parsed.useCases || [],
-            learningRecommendations:
-              parsed.learningRecommendations || [
-                `Clone the repository and review the primary entry point files in ${req.language || "the root"}.`,
-                `Inspect configuration and example test suites to understand input/output flows.`,
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [{ text: promptText }],
+                },
               ],
-            suggestedPrompts: parsed.suggestedPrompts || [],
-            generatedWith: "gemini",
-          };
-        }
-      } else {
-        console.warn(
-          `Gemini API returned status ${response.status}. Falling back to heuristic engine.`
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.25,
+              },
+            }),
+          }
         );
+
+        if (response.ok) {
+          const json = await response.json();
+          const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            const parsed = JSON.parse(candidateText);
+            return {
+              summary: parsed.summary,
+              architectureHighlights: parsed.architectureHighlights || [],
+              whyTrending:
+                parsed.whyTrending || "Rapid momentum in modern developer workflows.",
+              useCases: parsed.useCases || [],
+              learningRecommendations:
+                parsed.learningRecommendations || [
+                  `Clone the repository and review the primary entry point files in ${req.language || "the root"}.`,
+                  `Inspect configuration and example test suites to understand input/output flows.`,
+                ],
+              suggestedPrompts: parsed.suggestedPrompts || [],
+              generatedWith: "gemini",
+            };
+          }
+        } else {
+          console.warn(
+            `Gemini API (${model}) returned status ${response.status}. Trying fallback.`
+          );
+        }
+      } catch (err) {
+        console.warn(`Gemini generation (${model}) failed:`, err);
       }
-    } catch (err) {
-      console.warn("Gemini generation failed, using heuristic engine:", err);
     }
   }
 
-  // Developer Heuristic Engine (Fallback when no GEMINI_API_KEY is configured)
+  // Developer Heuristic Engine (Fallback when no GEMINI_API_KEY is configured or API unreachable)
   const isAgent = req.topics.some((t) => t.includes("agent") || t.includes("swarm"));
   const isLLM = req.topics.some((t) => t.includes("llm") || t.includes("model"));
   const isVision = req.topics.some((t) => t.includes("vision") || t.includes("yolo"));
@@ -140,23 +146,22 @@ Respond strictly with valid JSON. No markdown backticks, no conversational pream
       `Engineered in ${req.language || "modern languages"} with modular component design for rapid integration.`,
       `Leverages high-throughput compute pipelines optimized for ${domainCategory.toLowerCase()}.`,
       `Community-driven ecosystem backed by ${req.stars.toLocaleString()} stargazers.`,
-      req.readme
-        ? `Contains active documentation and configuration specifications in README.md.`
-        : `Lightweight repository specification with standard package architecture.`,
+      `Contains active documentation and configuration specifications in README.md.`,
     ],
-    whyTrending: `Gaining strong velocity due to developer adoption in the ${domainCategory} vertical.`,
+    whyTrending:
+      "Increasing demand for battle-tested open-source infrastructure and developer tooling.",
     useCases: [
-      `Local testing and production deployment for ${domainCategory.toLowerCase()}`,
-      `Integration into existing developer CLI and automation workflows`,
-      `Benchmarking state-of-the-art open-source implementations`,
+      `Accelerate enterprise AI and modern application development pipelines.`,
+      `Local development, testing, and deployment of specialized ${domainCategory.toLowerCase()}.`,
+      `Reference architecture for modern ${req.language || "software"} projects.`,
     ],
     learningRecommendations: [
       `Inspect the core package configuration and entrypoint file to review exported APIs.`,
       `Review community pull requests and issues to follow active feature velocity.`,
     ],
     suggestedPrompts: [
-      `How do I run ${req.name} locally with Docker or package manager?`,
-      `What are the production security considerations for ${req.name}?`,
+      `What are the production deployment prerequisites for ${req.name}?`,
+      `How does ${req.name} benchmark against competing open-source alternatives?`,
     ],
     generatedWith: "heuristic-engine",
   };

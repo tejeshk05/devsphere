@@ -5,6 +5,17 @@ export interface GitHubOwner {
   html_url: string;
 }
 
+export interface RepoVelocityData {
+  starsGained: number | null;
+  elapsedHours: number | null;
+  starsPerHour: number | null;
+  percentageGrowth: number | null;
+  previousStars: number | null;
+  firstSnapshotDate: string;
+  lastSnapshotDate: string;
+  status: "active" | "collecting_data";
+}
+
 export interface GitHubRepo {
   id: number;
   name: string;
@@ -28,6 +39,7 @@ export interface GitHubRepo {
   topics: string[];
   default_branch: string;
   score?: number;
+  velocity?: RepoVelocityData;
 }
 
 export interface GitHubSearchResponse {
@@ -36,7 +48,13 @@ export interface GitHubSearchResponse {
   items: GitHubRepo[];
 }
 
-export type TimeFilter = "daily" | "weekly" | "monthly";
+export type TimeFilter = "1h" | "6h" | "24h" | "7d" | "daily" | "weekly" | "monthly";
+
+export type TrendingMode =
+  | "fastest-growing"
+  | "new-releases"
+  | "popular"
+  | "rising-ai";
 
 export type CategoryId =
   | "ai"
@@ -57,4 +75,3 @@ export interface CategoryInfo {
   searchKeywords: string[];
   accentColor: string;
 }
-
