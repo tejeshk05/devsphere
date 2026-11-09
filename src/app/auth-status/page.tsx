@@ -72,8 +72,9 @@ export default function AuthStatusPage() {
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Owner Security & Authorization Vault</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Owner Security & Authorization Vault</span>
+              <span className="sm:hidden">Security Vault</span>
             </h1>
           </div>
         </div>

@@ -102,12 +102,13 @@ export default function BookmarksPage() {
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2 tracking-tight">
-                <Bookmark className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <span>Personal Repository Vault</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5 sm:gap-2 tracking-tight">
+                <Bookmark className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+                <span className="hidden sm:inline">Personal Repository Vault</span>
+                <span className="sm:hidden">Vault</span>
               </h1>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-amber-300">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-amber-300 shrink-0">
                 {bookmarks.length} SAVED
               </span>
             </div>

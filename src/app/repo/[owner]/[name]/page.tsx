@@ -83,57 +83,63 @@ export default function RepoDetailPage() {
   return (
     <div className="min-h-screen bg-[#040711] text-slate-100 flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-4 lg:px-8 pt-[max(2.75rem,calc(env(safe-area-inset-top)+0.75rem))] md:pt-3.5 pb-3">
-        <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 w-full bg-[#040711]/90 backdrop-blur-xl border-b border-white/[0.07] px-3 sm:px-4 lg:px-8 pt-[max(2.75rem,calc(env(safe-area-inset-top)+0.75rem))] md:pt-3.5 pb-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 max-w-7xl mx-auto">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => router.back()}
-              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-slate-400 hover:text-white transition-colors shrink-0"
               title="Go Back"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2 font-mono text-xs text-slate-400">
-              <Link href="/" className="hover:text-cyan-400">
+            <div className="flex items-center gap-1 sm:gap-1.5 font-mono text-xs text-slate-400 min-w-0">
+              <Link href="/" className="hover:text-cyan-400 shrink-0">
                 Grid
               </Link>
-              <span>/</span>
-              <span>{owner}</span>
-              <span>/</span>
-              <span className="text-white font-bold">{name}</span>
+              <span className="shrink-0 text-slate-600">/</span>
+              <span className="hidden sm:inline truncate max-w-[90px]">{owner}</span>
+              <span className="hidden sm:inline shrink-0 text-slate-600">/</span>
+              <span className="text-white font-bold truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">
+                {name}
+              </span>
             </div>
           </div>
 
           {repo && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 onClick={() => toggleBookmark(repo)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-mono transition-all shrink-0 whitespace-nowrap ${
                   bookmarked
                     ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-md shadow-amber-950"
                     : "bg-white/[0.03] border-white/[0.08] text-slate-300 hover:bg-white/[0.06]"
                 }`}
+                title={bookmarked ? "Remove from Vault" : "Save to Vault"}
               >
-                <Bookmark className={`w-3.5 h-3.5 ${bookmarked ? "fill-amber-400" : ""}`} />
-                <span>{bookmarked ? "Saved" : "Save Vault"}</span>
+                <Bookmark className={`w-3.5 h-3.5 shrink-0 ${bookmarked ? "fill-amber-400" : ""}`} />
+                <span className="hidden sm:inline">{bookmarked ? "Saved" : "Save Vault"}</span>
+                <span className="sm:hidden">{bookmarked ? "Saved" : "Save"}</span>
               </button>
 
               <button
                 onClick={() => setShowAIModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/90 to-indigo-950/90 border border-purple-700/60 text-purple-300 text-xs font-mono font-medium hover:border-purple-500 transition-all shadow-sm"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-950/90 to-indigo-950/90 border border-purple-700/60 text-purple-300 text-xs font-mono font-medium hover:border-purple-500 transition-all shadow-sm shrink-0 whitespace-nowrap"
+                title="AI Architecture Analysis"
               >
-                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden sm:inline">AI Analysis</span>
+                <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="hidden md:inline">AI Analysis</span>
               </button>
 
               <a
                 href={repo.html_url}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono font-medium hover:bg-cyan-900/60 transition-colors"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-cyan-950/60 border border-cyan-800/60 text-cyan-300 text-xs font-mono font-medium hover:bg-cyan-900/60 transition-colors shrink-0 whitespace-nowrap"
+                title="Open on GitHub"
               >
-                <span>GitHub</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">GitHub</span>
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
               </a>
             </div>
           )}
@@ -141,7 +147,7 @@ export default function RepoDetailPage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 pb-28 md:pb-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 pb-16 md:pb-8 space-y-6">
         {loading ? (
           <div className="py-24 flex flex-col items-center justify-center space-y-3 font-mono">
             <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
@@ -288,7 +294,7 @@ export default function RepoDetailPage() {
 
               {readme ? (
                 <div
-                  className="prose prose-invert max-w-none text-slate-300 text-xs sm:text-sm leading-relaxed overflow-x-auto space-y-4 font-sans [&_a]:text-cyan-400 [&_a:hover]:underline [&_pre]:bg-[#03060f] [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-white/[0.08] [&_code]:font-mono [&_code]:text-cyan-300 [&_h1]:text-white [&_h1]:text-xl [&_h2]:text-white [&_h2]:text-lg [&_h3]:text-slate-100 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                  className="prose prose-invert max-w-none text-slate-300 text-xs sm:text-sm leading-relaxed overflow-x-auto space-y-4 font-sans [&_a]:text-cyan-400 [&_a:hover]:underline [&_pre]:bg-[#03060f] [&_pre]:p-4 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-white/[0.08] [&_code]:font-mono [&_code]:text-cyan-300 [&_h1]:text-white [&_h1]:text-xl [&_h2]:text-white [&_h2]:text-lg [&_h3]:text-slate-100 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_img]:rounded-2xl [&_img]:max-w-full [&_img]:h-auto [&_img]:mx-auto [&_img]:my-4 [&_img]:border [&_img]:border-white/[0.08] [&_img]:shadow-xl"
                   dangerouslySetInnerHTML={{
                     __html: renderSanitizedMarkdown(
                       readme,

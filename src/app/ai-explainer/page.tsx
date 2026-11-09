@@ -108,8 +108,9 @@ export default function AIExplainerStudioPage() {
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <h1 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
-              <span>AI Architecture Explainer Studio</span>
+              <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+              <span className="hidden sm:inline">AI Architecture Explainer Studio</span>
+              <span className="sm:hidden">AI Explainer</span>
             </h1>
           </div>
         </div>
