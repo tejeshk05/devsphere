@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: devsphere
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEVSPHERE_ACCESS_KEY
+        value: devsphere-master-key-2026
+      - key: AUTH_SESSION_SECRET
+        value: devsphere-local-session-secret-vault-2026
+      - key: AUTHORIZED_ACCOUNT_NAME
+        value: "D. Tejesh Kumar"
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

@@ -296,3 +296,4 @@ export function startHourlyScheduler(): void {
     schedulerTimer.unref();
   }
 }
+
